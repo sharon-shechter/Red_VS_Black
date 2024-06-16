@@ -9,7 +9,7 @@ export default function Index() {
       const response = await fetch('http://localhost:5000/make-group');
       const data = await response.json();
       const groupId = data.groupId;
-  
+
       if (groupId) {
         localStorage.setItem('groupId', groupId);
         router.push(`/group?groupId=${groupId}`);

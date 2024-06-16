@@ -1,58 +1,55 @@
 import { useEffect, useState } from 'react';
-import io from 'socket.io-client';
 import { useRouter } from 'next/router';
-import styles from '../styles/Group.module.css';
+import io from 'socket.io-client';
 
 let socket;
 
 export default function Group() {
-  const router = useRouter();
-  const { groupId } = router.query;
   const [username, setUsername] = useState('');
   const [users, setUsers] = useState([]);
-  const [isJoined, setIsJoined] = useState(false);
+  const [joined, setJoined] = useState(false);
+  const router = useRouter();
+  const { groupId } = router.query;
 
   useEffect(() => {
-    if (groupId) {
-      socket = io('http://localhost:3001');
+    socket = io('http://localhost:3001');
 
-      socket.on('update users', (users) => {
-        setUsers(users);
-      });
+    socket.on('update users', (users) => {
+      setUsers(users);
+    });
 
-      return () => {
-        socket.disconnect();
-      };
-    }
-  }, [groupId]);
+    return () => {
+      socket.disconnect();
+    };
+  }, []);
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    socket.emit('join group', { groupId, username });
-    setIsJoined(true);
+    if (username && groupId) {
+      socket.emit('join group', { groupId, username });
+      setJoined(true);
+    }
   };
 
   return (
-    <div className={styles.container}>
-      <h1 className={styles.title}>Group: {groupId}</h1>
-      {!isJoined ? (
+    <div>
+      <h1>Group {groupId}</h1>
+      {!joined && (
         <form onSubmit={handleSubmit}>
           <input
             type="text"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             placeholder="Enter your name"
-            className={styles.input}
           />
-          <button type="submit" className={styles.button}>Submit</button>
+          <button type="submit">Join Group</button>
         </form>
-      ) : (
-        <ul className={styles.userList}>
-          {users.map((user, index) => (
-            <li key={index} className={styles.userListItem}>{user}</li>
-          ))}
-        </ul>
       )}
+      <ul>
+        {users.map((user, index) => (
+          <li key={index}>{user}</li>
+        ))}
+      </ul>
     </div>
   );
 }

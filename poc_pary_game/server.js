@@ -17,29 +17,29 @@ const io = new Server(server, {
 
 let groups = {};
 
-app.get('/make-group', (req, res) => {
-  const groupId = uuidv4();
-  groups[groupId] = [];
-  res.json({ groupId });
-});
-
 io.on('connection', (socket) => {
   console.log('a user connected');
 
   socket.on('join group', ({ groupId, username }) => {
-    if (groups[groupId]) {
-      groups[groupId].push(username);
-      socket.join(groupId);
-      io.to(groupId).emit('update users', groups[groupId]);
+    if (!groups[groupId]) {
+      groups[groupId] = [];
     }
+    groups[groupId].push({ id: socket.id, name: username });
+    socket.join(groupId);
+    io.to(groupId).emit('update users', groups[groupId].map(user => user.name));
   });
 
   socket.on('disconnect', () => {
-    for (const groupId in groups) {
-      groups[groupId] = groups[groupId].filter(user => user.socketId !== socket.id);
-      io.to(groupId).emit('update users', groups[groupId]);
+    for (let groupId in groups) {
+      groups[groupId] = groups[groupId].filter(user => user.id !== socket.id);
+      io.to(groupId).emit('update users', groups[groupId].map(user => user.name));
     }
   });
+});
+
+app.get('/make-group', (req, res) => {
+  const groupId = uuidv4();
+  res.json({ groupId });
 });
 
 server.listen(3001, () => {

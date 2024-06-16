@@ -23,7 +23,7 @@ export default function Index() {
 
   return (
     <div className={styles.container}>
-      <h1 className={styles.welcome}>Welcome</h1>
+      <h1 className={styles.welcome}>BLACK VS RED</h1>
       <button className={styles.startButton} onClick={makeGroup}>Let's Start</button>
     </div>
   );

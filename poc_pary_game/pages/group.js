@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import io from 'socket.io-client';
+import styles from '../styles/Group.module.css';
 
 let socket;
 
@@ -32,8 +33,8 @@ export default function Group() {
   };
 
   return (
-    <div>
-      <h1>Group {groupId}</h1>
+    <div className={styles.container}>
+      <h1 className={styles.title}>Group {groupId}</h1>
       {!joined && (
         <form onSubmit={handleSubmit}>
           <input
@@ -41,13 +42,14 @@ export default function Group() {
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             placeholder="Enter your name"
+            className={styles.input}
           />
-          <button type="submit">Join Group</button>
+          <button type="submit" className={styles.button}>Join Group</button>
         </form>
       )}
-      <ul>
+      <ul className={styles.userList}>
         {users.map((user, index) => (
-          <li key={index}>{user}</li>
+          <li key={index} className={styles.userListItem}>{user}</li>
         ))}
       </ul>
     </div>

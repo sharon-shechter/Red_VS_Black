@@ -38,12 +38,12 @@ export default function Group() {
       setRound(round);
       setTimer(30);
       setPhase('playing');
-      setVotedFor(''); // Reset vote at the start of each round
+      setVotedFor('');
     });
 
     socket.on('voting start', () => {
       setPhase('voting');
-      setTimer(20); // Changed to 20 seconds as per server update
+      setTimer(20);
     });
 
     socket.on('player eliminated', ({ eliminatedPlayer }) => {
@@ -88,7 +88,7 @@ export default function Group() {
   const handleVote = () => {
     if (groupId && votedFor) {
       socket.emit('submit vote', { groupId, votedFor });
-      setVotedFor(''); // Reset vote after submission
+      setVotedFor('');
     }
   };
 
@@ -99,7 +99,7 @@ export default function Group() {
     <div className={styles.container}>
       <h1 className={styles.title}>Group {groupId}</h1>
       {error && <p className={styles.error}>{error}</p>}
-      {!joined && (
+      {!joined ? (
         <form onSubmit={handleSubmit}>
           <input
             type="text"
@@ -110,37 +110,40 @@ export default function Group() {
           />
           <button type="submit" className={styles.button}>Join Group</button>
         </form>
+      ) : (
+        <>
+          {phase === 'waiting' && (
+            <button onClick={handleStartGame} className={styles.button}>Start the Game</button>
+          )}
+          {phase !== 'waiting' && (
+            <div>
+              <h2>Round {round}</h2>
+              <p>Time left: {timer} seconds</p>
+              {myPlayer && <p>Your color: {myPlayer.color}</p>}
+            </div>
+          )}
+          {phase === 'voting' && !myPlayer?.eliminated && (
+            <div>
+              <select value={votedFor} onChange={(e) => setVotedFor(e.target.value)}>
+                <option value="">Select a player</option>
+                {activePlayers
+                  .filter(player => player.name !== username && !player.eliminated)
+                  .map((player, index) => (
+                    <option key={index} value={player.name}>{player.name}</option>
+                  ))}
+              </select>
+              <button onClick={handleVote} className={styles.button}>Vote</button>
+            </div>
+          )}
+          <ul className={styles.userList}>
+            {users.map((user, index) => (
+              <li key={index} className={styles.userListItem}>
+                {user}
+              </li>
+            ))}
+          </ul>
+        </>
       )}
-      {joined && phase === 'waiting' && (
-        <button onClick={handleStartGame} className={styles.button}>Start the Game</button>
-      )}
-      {phase !== 'waiting' && (
-        <div>
-          <h2>Round {round}</h2>
-          <p>Time left: {timer} seconds</p>
-          {myPlayer && <p>Your color: {myPlayer.color}</p>}
-        </div>
-      )}
-      {phase === 'voting' && !myPlayer?.eliminated && (
-        <div>
-          <select value={votedFor} onChange={(e) => setVotedFor(e.target.value)}>
-            <option value="">Select a player</option>
-            {activePlayers
-              .filter(player => player.name !== username && !player.eliminated)
-              .map((player, index) => (
-                <option key={index} value={player.name}>{player.name}</option>
-              ))}
-          </select>
-          <button onClick={handleVote} className={styles.button}>Vote</button>
-        </div>
-      )}
-      <ul className={styles.userList}>
-        {activePlayers.map((player, index) => (
-          <li key={index} className={styles.userListItem}>
-            {player.name} {player.eliminated ? '(Eliminated)' : ''}
-          </li>
-        ))}
-      </ul>
     </div>
   );
 }

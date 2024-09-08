@@ -55,6 +55,15 @@ io.on('connection', (socket) => {
     }
   });
 
+  socket.on('say hey', ({ groupId, targetPlayer }) => {
+    const game = games[groupId];
+    const target = game.players.find(player => player.name === targetPlayer && !player.eliminated);
+    
+    if (target) {
+      io.to(target.id).emit('hello message', { from: socket.id });
+    }
+  });
+
   socket.on('disconnect', () => {
     for (let groupId in groups) {
       groups[groupId] = groups[groupId].filter(user => user.id !== socket.id);
@@ -76,7 +85,8 @@ function startGame(groupId) {
       color: player.id === redPlayer.id ? 'red' : 'black',
       score: 0,
       votedFor: null,
-      eliminated: false
+      eliminated: false,
+      usedTurnRed: false
     }))
   };
 
@@ -105,8 +115,8 @@ function runGameLoop(groupId) {
         resetVotes(groupId);
         runGameLoop(groupId);
       }
-    }, 20000);  // Changed to 20 seconds as per your description
-  }, 30000);
+    }, 20000);  // 20 seconds for voting
+  }, 30000);  // 30 seconds for playing
 }
 
 function processVotes(groupId) {
@@ -132,20 +142,19 @@ function eliminatePlayer(groupId) {
     eliminatedPlayer.eliminated = true;
     io.to(groupId).emit('player eliminated', { eliminatedPlayer: eliminatedPlayer.name });
   }
-  // If there's a tie, no one gets eliminated this round
 }
 
 function checkWinCondition(groupId) {
   const game = games[groupId];
-  const redPlayer = game.players.find(p => p.color === 'red' && !p.eliminated);
+  const redPlayers = game.players.filter(p => p.color === 'red' && !p.eliminated);
   const activePlayers = game.players.filter(p => !p.eliminated);
-  return !redPlayer || activePlayers.length === 1;
+  return redPlayers.length === 0 || redPlayers.length === activePlayers.length;
 }
 
 function endGame(groupId) {
   const game = games[groupId];
-  const redPlayer = game.players.find(p => p.color === 'red' && !p.eliminated);
-  const winner = redPlayer ? 'Red player' : 'Black players';
+  const redPlayers = game.players.filter(p => p.color === 'red' && !p.eliminated);
+  const winner = redPlayers.length > 0 ? 'Red team' : 'Black team';
   io.to(groupId).emit('game over', { winner });
   delete games[groupId];
 }
@@ -154,7 +163,7 @@ function resetVotes(groupId) {
   const game = games[groupId];
   game.players.forEach(player => {
     player.votedFor = null;
-    player.score = 0;  // Reset scores each round
+    player.score = 0;
   });
 }
 

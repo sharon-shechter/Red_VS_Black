@@ -2,6 +2,9 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import io from 'socket.io-client';
 import styles from '../styles/Group.module.css';
+import { GameInfo } from './GameInfo';
+import { VotingSection } from './VotingSection';
+import { SayHeyButton } from './SayHeyButton';
 
 let socket;
 
@@ -12,64 +15,75 @@ export default function Group() {
   const [error, setError] = useState('');
   const [gameState, setGameState] = useState(null);
   const [phase, setPhase] = useState('waiting');
-  const [timer, setTimer] = useState(0);
-  const [round, setRound] = useState(0);
+  const [playingTimer, setPlayingTimer] = useState(30);
+  const [votingTimer, setVotingTimer] = useState(15);
   const [votedFor, setVotedFor] = useState('');
+  const [selectedPlayer, setSelectedPlayer] = useState('');
+  const [showPlayerList, setShowPlayerList] = useState(false);
+  const [round, setRound] = useState(1); // Added round state here
   const router = useRouter();
   const { groupId } = router.query;
 
   useEffect(() => {
     socket = io('http://localhost:3001');
-
-    socket.on('update users', (users) => {
-      setUsers(users);
-    });
-
-    socket.on('error', (message) => {
-      setError(message);
-    });
-
-    socket.on('game started', (state) => {
-      setGameState(state);
-      setPhase('playing');
-    });
-
-    socket.on('round start', ({ round }) => {
-      setRound(round);
-      setTimer(30);
-      setPhase('playing');
-      setVotedFor('');
-    });
-
-    socket.on('voting start', () => {
-      setPhase('voting');
-      setTimer(20);
-    });
-
-    socket.on('player eliminated', ({ eliminatedPlayer }) => {
-      setError(`${eliminatedPlayer} has been eliminated!`);
-      setGameState(prevState => ({
-        ...prevState,
-        players: prevState.players.map(player => 
-          player.name === eliminatedPlayer ? {...player, eliminated: true} : player
-        )
-      }));
-    });
-
-    socket.on('game over', ({ winner }) => {
-      setError(`Game Over! ${winner} wins!`);
-      setPhase('gameOver');
-    });
-
-    const interval = setInterval(() => {
-      setTimer((prevTimer) => (prevTimer > 0 ? prevTimer - 1 : 0));
-    }, 1000);
-
-    return () => {
-      socket.disconnect();
-      clearInterval(interval);
-    };
+    socketEvents();
+    return () => socket.disconnect();
   }, []);
+
+  useEffect(() => {
+    let interval;
+    if (phase === 'playing' && playingTimer > 0) {
+      interval = setInterval(() => {
+        setPlayingTimer((prevTimer) => prevTimer - 1);
+      }, 1000);
+    } else if (phase === 'voting' && votingTimer > 0) {
+      interval = setInterval(() => {
+        setVotingTimer((prevTimer) => prevTimer - 1);
+      }, 1000);
+    } else if (playingTimer === 0 && phase === 'playing') {
+      clearInterval(interval);
+      setPhase('voting');
+      setVotingTimer(15);
+    } else if (votingTimer === 0 && phase === 'voting') {
+      clearInterval(interval);
+      socket.emit('voting ended', { groupId });
+    }
+    return () => clearInterval(interval);
+  }, [phase, playingTimer, votingTimer, groupId]);
+
+  const socketEvents = () => {
+    socket.on('update users', (users) => setUsers(users));
+    socket.on('error', (message) => setError(message));
+    socket.on('game started', (state) => handleGameStart(state));
+    socket.on('round start', ({ round }) => handleRoundStart(round));
+    socket.on('voting start', () => {setPhase('voting');setVotingTimer(15);});
+    socket.on('player eliminated', ({ eliminatedPlayer }) => handlePlayerElimination(eliminatedPlayer));
+    socket.on('game over', ({ winner }) => setError(`Game Over! ${winner} wins!`));
+    socket.on('hello message', ({ from }) => alert('You got a hello message!'));
+  };
+
+  const handleGameStart = (state) => {
+    setGameState(state);
+    setPhase('playing');
+    setPlayingTimer(30);
+  };
+
+  const handleRoundStart = (round) => {
+    setRound(round); // Now round is properly updated
+    setPlayingTimer(30);
+    setPhase('playing');
+    setVotedFor('');
+  };
+
+  const handlePlayerElimination = (eliminatedPlayer) => {
+    setError(`${eliminatedPlayer} has been eliminated!`);
+    setGameState((prevState) => ({
+      ...prevState,
+      players: prevState.players.map((player) =>
+        player.name === eliminatedPlayer ? { ...player, eliminated: true } : player
+      ),
+    }));
+  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -92,8 +106,15 @@ export default function Group() {
     }
   };
 
-  const myPlayer = gameState?.players.find(player => player.name === username);
-  const activePlayers = gameState?.players.filter(player => !player.eliminated) || [];
+  const handleSayHey = () => {
+    if (groupId && selectedPlayer) {
+      socket.emit('say hey', { groupId, targetPlayer: selectedPlayer });
+      setShowPlayerList(false);
+    }
+  };
+
+  const myPlayer = gameState?.players.find((player) => player.name === username);
+  const activePlayers = gameState?.players.filter((player) => !player.eliminated) || [];
 
   return (
     <div className={styles.container}>
@@ -112,28 +133,19 @@ export default function Group() {
         </form>
       ) : (
         <>
-          {phase === 'waiting' && (
-            <button onClick={handleStartGame} className={styles.button}>Start the Game</button>
-          )}
-          {phase !== 'waiting' && (
-            <div>
-              <h2>Round {round}</h2>
-              <p>Time left: {timer} seconds</p>
-              {myPlayer && <p>Your color: {myPlayer.color}</p>}
-            </div>
-          )}
+          {phase === 'waiting' && <button onClick={handleStartGame} className={styles.button}>Start the Game</button>}
+          {phase !== 'waiting' && (<GameInfo round={round} timer={phase === 'playing' ? playingTimer : votingTimer} myPlayer={myPlayer} phase={phase}/>)}
           {phase === 'voting' && !myPlayer?.eliminated && (
-            <div>
-              <select value={votedFor} onChange={(e) => setVotedFor(e.target.value)}>
-                <option value="">Select a player</option>
-                {activePlayers
-                  .filter(player => player.name !== username && !player.eliminated)
-                  .map((player, index) => (
-                    <option key={index} value={player.name}>{player.name}</option>
-                  ))}
-              </select>
-              <button onClick={handleVote} className={styles.button}>Vote</button>
-            </div>
+          <VotingSection activePlayers={activePlayers} username={username} votedFor={votedFor} setVotedFor={setVotedFor} handleVote={handleVote} />)}
+          {myPlayer?.color === 'red' && phase === 'playing' && (
+            <SayHeyButton 
+              activePlayers={activePlayers} 
+              selectedPlayer={selectedPlayer} 
+              setSelectedPlayer={setSelectedPlayer} 
+              handleSayHey={handleSayHey}
+              showPlayerList={showPlayerList}
+              setShowPlayerList={setShowPlayerList}
+            />
           )}
           <ul className={styles.userList}>
             {users.map((user, index) => (

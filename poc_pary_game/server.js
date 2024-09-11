@@ -55,15 +55,32 @@ io.on('connection', (socket) => {
     }
   });
 
-  socket.on('say hey', ({ groupId, targetPlayer }) => {
-    const game = games[groupId];
-    const target = game.players.find(player => player.name === targetPlayer && !player.eliminated);
-    
-    if (target) {
-      io.to(target.id).emit('hello message', { from: socket.id });
+  socket.on('make player red', ({ groupId, playerToTurn }) => {
+    if (games[groupId] && games[groupId].phase === GAME_PHASES.PLAYING) {
+      const redPlayer = games[groupId].players.find(p => p.id === socket.id && p.color === 'red');
+      if (redPlayer && !redPlayer.usedTurnRed) {
+        const playerToTurnRed = games[groupId].players.find(p => p.name === playerToTurn && p.color === 'black');
+        if (playerToTurnRed) {
+          playerToTurnRed.color = 'red';
+          redPlayer.usedTurnRed = true;
+          io.to(groupId).emit('player turned red', { turnedPlayer: playerToTurn });
+        }
+      }
     }
   });
-
+  socket.on('say hey', ({ groupId, targetPlayer }) => {
+    const senderPlayer = groups[groupId].find(p => p.id === socket.id);  // Find the sender's details
+    const targetPlayerObj = groups[groupId].find(p => p.name === targetPlayer);  // Find the target player's details
+  
+    if (senderPlayer && targetPlayerObj) {
+      // Send the message to the target player with the sender's name
+      io.to(targetPlayerObj.id).emit('hello message', { from: senderPlayer.name });
+  
+      // Also send a confirmation back to the sender (red player)
+      socket.emit('hello message', { from: 'You', to: targetPlayer });
+    }
+  });
+  
   socket.on('disconnect', () => {
     for (let groupId in groups) {
       groups[groupId] = groups[groupId].filter(user => user.id !== socket.id);
@@ -142,6 +159,7 @@ function eliminatePlayer(groupId) {
     eliminatedPlayer.eliminated = true;
     io.to(groupId).emit('player eliminated', { eliminatedPlayer: eliminatedPlayer.name });
   }
+  // If there's a tie, no one gets eliminated this round
 }
 
 function checkWinCondition(groupId) {
@@ -163,7 +181,7 @@ function resetVotes(groupId) {
   const game = games[groupId];
   game.players.forEach(player => {
     player.votedFor = null;
-    player.score = 0;
+    player.score = 0;  // Reset scores each round
   });
 }
 

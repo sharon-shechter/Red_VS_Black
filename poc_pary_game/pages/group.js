@@ -20,9 +20,11 @@ export default function Group() {
   const [votedFor, setVotedFor] = useState('');
   const [selectedPlayer, setSelectedPlayer] = useState('');
   const [showPlayerList, setShowPlayerList] = useState(false);
+  const [helloMessage, setHelloMessage] = useState('');
   const [round, setRound] = useState(1); // Added round state here
   const router = useRouter();
   const { groupId } = router.query;
+
 
   useEffect(() => {
     socket = io('http://localhost:3001');
@@ -59,7 +61,15 @@ export default function Group() {
     socket.on('voting start', () => {setPhase('voting');setVotingTimer(15);});
     socket.on('player eliminated', ({ eliminatedPlayer }) => handlePlayerElimination(eliminatedPlayer));
     socket.on('game over', ({ winner }) => setError(`Game Over! ${winner} wins!`));
-    socket.on('hello message', ({ from }) => alert('You got a hello message!'));
+    socket.on('hello message', ({ from, to }) => {
+      if (from === 'You') {
+        // This means the current player sent the message
+        setHelloMessage(`You said hey to ${to}`);
+      } else {
+        // This means the current player received the message
+        setHelloMessage(`Hey from ${from}!`);
+      }
+    });
   };
 
   const handleGameStart = (state) => {
@@ -112,13 +122,13 @@ export default function Group() {
       setShowPlayerList(false);
     }
   };
-
   const myPlayer = gameState?.players.find((player) => player.name === username);
   const activePlayers = gameState?.players.filter((player) => !player.eliminated) || [];
 
   return (
     <div className={styles.container}>
       <h1 className={styles.title}>Group {groupId}</h1>
+      {helloMessage && <h2 className={styles.helloHeader}>{helloMessage}</h2>}
       {error && <p className={styles.error}>{error}</p>}
       {!joined ? (
         <form onSubmit={handleSubmit}>

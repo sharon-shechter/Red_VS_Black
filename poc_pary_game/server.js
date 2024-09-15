@@ -55,19 +55,7 @@ io.on('connection', (socket) => {
     }
   });
 
-  socket.on('make player red', ({ groupId, playerToTurn }) => {
-    if (games[groupId] && games[groupId].phase === GAME_PHASES.PLAYING) {
-      const redPlayer = games[groupId].players.find(p => p.id === socket.id && p.color === 'red');
-      if (redPlayer && !redPlayer.usedTurnRed) {
-        const playerToTurnRed = games[groupId].players.find(p => p.name === playerToTurn && p.color === 'black');
-        if (playerToTurnRed) {
-          playerToTurnRed.color = 'red';
-          redPlayer.usedTurnRed = true;
-          io.to(groupId).emit('player turned red', { turnedPlayer: playerToTurn });
-        }
-      }
-    }
-  });
+
   socket.on('say hey', ({ groupId, targetPlayer }) => {
     const senderPlayer = groups[groupId].find(p => p.id === socket.id);  // Find the sender's details
     const targetPlayerObj = groups[groupId].find(p => p.name === targetPlayer);  // Find the target player's details

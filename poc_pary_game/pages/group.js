@@ -15,8 +15,8 @@ export default function Group() {
   const [error, setError] = useState('');
   const [gameState, setGameState] = useState(null);
   const [phase, setPhase] = useState('waiting');
-  const [playingTimer, setPlayingTimer] = useState(30);
-  const [votingTimer, setVotingTimer] = useState(15);
+  const [playingTimer, setPlayingTimer] = useState(0);
+  const [votingTimer, setVotingTimer] = useState(0);
   const [votedFor, setVotedFor] = useState('');
   const [selectedPlayer, setSelectedPlayer] = useState('');
   const [showPlayerList, setShowPlayerList] = useState(false);
@@ -45,7 +45,7 @@ export default function Group() {
     } else if (playingTimer === 0 && phase === 'playing') {
       clearInterval(interval);
       setPhase('voting');
-      setVotingTimer(15);
+      setVotingTimer(20);
     } else if (votingTimer === 0 && phase === 'voting') {
       clearInterval(interval);
       socket.emit('voting ended', { groupId });
@@ -57,8 +57,8 @@ export default function Group() {
     socket.on('update users', (users) => setUsers(users));
     socket.on('error', (message) => setError(message));
     socket.on('game started', (state) => handleGameStart(state));
-    socket.on('round start', ({ round }) => handleRoundStart(round));
-    socket.on('voting start', () => {setPhase('voting');setVotingTimer(15);});
+    socket.on('round start', ({ round }) => {setRound(round);setPlayingTimer(30);setPhase('playing');setVotedFor('');});
+    socket.on('voting start', () => {setPhase('voting');setVotingTimer(20);});
     socket.on('player eliminated', ({ eliminatedPlayer }) => handlePlayerElimination(eliminatedPlayer));
     socket.on('game over', ({ winner }) => setError(`Game Over! ${winner} wins!`));
     socket.on('hello message', ({ from, to }) => {
@@ -69,8 +69,13 @@ export default function Group() {
         // This means the current player received the message
         setHelloMessage(`Hey from ${from}!`);
       }
+    
+      // Clear the message after 10 seconds
+      setTimeout(() => {
+        setHelloMessage('');
+      }, 10000);  // 10 seconds
     });
-  };
+  }
 
   const handleGameStart = (state) => {
     setGameState(state);
@@ -78,12 +83,7 @@ export default function Group() {
     setPlayingTimer(30);
   };
 
-  const handleRoundStart = (round) => {
-    setRound(round); // Now round is properly updated
-    setPlayingTimer(30);
-    setPhase('playing');
-    setVotedFor('');
-  };
+  
 
   const handlePlayerElimination = (eliminatedPlayer) => {
     setError(`${eliminatedPlayer} has been eliminated!`);

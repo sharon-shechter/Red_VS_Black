@@ -4,7 +4,7 @@ import io from 'socket.io-client';
 import styles from '../styles/Group.module.css';
 import { GameInfo } from './GameInfo';
 import { VotingSection } from './VotingSection';
-import { SayHeyButton } from './SayHeyButton';
+import { TurnRedButton } from './TurnRedButton';
 
 let socket;
 
@@ -20,11 +20,10 @@ export default function Group() {
   const [votedFor, setVotedFor] = useState('');
   const [selectedPlayer, setSelectedPlayer] = useState('');
   const [showPlayerList, setShowPlayerList] = useState(false);
-  const [helloMessage, setHelloMessage] = useState('');
-  const [round, setRound] = useState(1); // Added round state here
+  const [message, setMessage] = useState('');
+  const [round, setRound] = useState(1);
   const router = useRouter();
   const { groupId } = router.query;
-
 
   useEffect(() => {
     socket = io('http://localhost:3001');
@@ -57,23 +56,33 @@ export default function Group() {
     socket.on('update users', (users) => setUsers(users));
     socket.on('error', (message) => setError(message));
     socket.on('game started', (state) => handleGameStart(state));
-    socket.on('round start', ({ round }) => {setRound(round);setPlayingTimer(30);setPhase('playing');setVotedFor('');});
-    socket.on('voting start', () => {setPhase('voting');setVotingTimer(20);});
+    socket.on('round start', ({ round }) => {
+      setRound(round);
+      setPlayingTimer(30);
+      setPhase('playing');
+      setVotedFor('');
+    });
+    socket.on('voting start', () => {
+      setPhase('voting');
+      setVotingTimer(20);
+    });
     socket.on('player eliminated', ({ eliminatedPlayer }) => handlePlayerElimination(eliminatedPlayer));
     socket.on('game over', ({ winner }) => setError(`Game Over! ${winner} wins!`));
-    socket.on('hello message', ({ from, to }) => {
-      if (from === 'You') {
-        // This means the current player sent the message
-        setHelloMessage(`You said hey to ${to}`);
-      } else {
-        // This means the current player received the message
-        setHelloMessage(`Hey from ${from}!`);
-      }
-    
-      // Clear the message after 10 seconds
-      setTimeout(() => {
-        setHelloMessage('');
-      }, 10000);  // 10 seconds
+    socket.on('turn red message', ({ from }) => {
+      setMessage(`${from} turned you into a red player!`);
+      setTimeout(() => setMessage(''), 10000);
+    });
+    socket.on('turn red confirmation', ({ to }) => {
+      setMessage(`You turned ${to} into a red player!`);
+      setTimeout(() => setMessage(''), 10000);
+    });
+    socket.on('player color changed', ({ player, newColor }) => {
+      setGameState((prevState) => ({
+        ...prevState,
+        players: prevState.players.map((p) =>
+          p.name === player ? { ...p, color: newColor } : p
+        ),
+      }));
     });
   }
 
@@ -82,8 +91,6 @@ export default function Group() {
     setPhase('playing');
     setPlayingTimer(30);
   };
-
-  
 
   const handlePlayerElimination = (eliminatedPlayer) => {
     setError(`${eliminatedPlayer} has been eliminated!`);
@@ -116,19 +123,27 @@ export default function Group() {
     }
   };
 
-  const handleSayHey = () => {
-    if (groupId && selectedPlayer) {
-      socket.emit('say hey', { groupId, targetPlayer: selectedPlayer });
+  const handleTurnRed = () => {
+    if (groupId && selectedPlayer && !myPlayer.usedTurnRed) {
+      socket.emit('turn red', { groupId, targetPlayer: selectedPlayer });
       setShowPlayerList(false);
+      // Update local state to reflect that the ability has been used
+      setGameState((prevState) => ({
+        ...prevState,
+        players: prevState.players.map((p) =>
+          p.name === username ? { ...p, usedTurnRed: true } : p
+        ),
+      }));
     }
   };
+
   const myPlayer = gameState?.players.find((player) => player.name === username);
   const activePlayers = gameState?.players.filter((player) => !player.eliminated) || [];
 
   return (
     <div className={styles.container}>
       <h1 className={styles.title}>Group {groupId}</h1>
-      {helloMessage && <h2 className={styles.helloHeader}>{helloMessage}</h2>}
+      {message && <h2 className={styles.messageHeader}>{message}</h2>}
       {error && <p className={styles.error}>{error}</p>}
       {!joined ? (
         <form onSubmit={handleSubmit}>
@@ -144,15 +159,29 @@ export default function Group() {
       ) : (
         <>
           {phase === 'waiting' && <button onClick={handleStartGame} className={styles.button}>Start the Game</button>}
-          {phase !== 'waiting' && (<GameInfo round={round} timer={phase === 'playing' ? playingTimer : votingTimer} myPlayer={myPlayer} phase={phase}/>)}
+          {phase !== 'waiting' && (
+            <GameInfo 
+              round={round} 
+              timer={phase === 'playing' ? playingTimer : votingTimer} 
+              myPlayer={myPlayer} 
+              phase={phase}
+            />
+          )}
           {phase === 'voting' && !myPlayer?.eliminated && (
-          <VotingSection activePlayers={activePlayers} username={username} votedFor={votedFor} setVotedFor={setVotedFor} handleVote={handleVote} />)}
-          {myPlayer?.color === 'red' && phase === 'playing' && (
-            <SayHeyButton 
+            <VotingSection 
               activePlayers={activePlayers} 
+              username={username} 
+              votedFor={votedFor} 
+              setVotedFor={setVotedFor} 
+              handleVote={handleVote} 
+            />
+          )}
+          {myPlayer?.color === 'red' && phase === 'playing' && !myPlayer.usedTurnRed && (
+            <TurnRedButton 
+              activePlayers={activePlayers.filter(p => p.color !== 'red' && p.name !== username)} 
               selectedPlayer={selectedPlayer} 
               setSelectedPlayer={setSelectedPlayer} 
-              handleSayHey={handleSayHey}
+              handleTurnRed={handleTurnRed}
               showPlayerList={showPlayerList}
               setShowPlayerList={setShowPlayerList}
             />

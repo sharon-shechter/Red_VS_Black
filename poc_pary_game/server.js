@@ -55,20 +55,26 @@ io.on('connection', (socket) => {
     }
   });
 
-
-  socket.on('say hey', ({ groupId, targetPlayer }) => {
-    const senderPlayer = groups[groupId].find(p => p.id === socket.id);  // Find the sender's details
-    const targetPlayerObj = groups[groupId].find(p => p.name === targetPlayer);  // Find the target player's details
+  socket.on('turn red', ({ groupId, targetPlayer }) => {
+    const game = games[groupId];
+    const senderPlayer = game.players.find(p => p.id === socket.id);
+    const targetPlayerObj = game.players.find(p => p.name === targetPlayer);
   
-    if (senderPlayer && targetPlayerObj) {
-      // Send the message to the target player with the sender's name
-      io.to(targetPlayerObj.id).emit('hello message', { from: senderPlayer.name });
+    if (senderPlayer && targetPlayerObj && senderPlayer.color === 'red' && !senderPlayer.usedTurnRed) {
+      senderPlayer.usedTurnRed = true; // Mark the ability as used
+      targetPlayerObj.color = 'red'; // Turn the target player red
+      
+      // Send the message to the target player
+      io.to(targetPlayerObj.id).emit('turn red message', { from: senderPlayer.name, to: 'You' });
   
-      // Also send a confirmation back to the sender (red player)
-      socket.emit('hello message', { from: 'You', to: targetPlayer });
+      // Send a confirmation back to the sender (red player)
+      socket.emit('turn red message', { from: 'You', to: targetPlayer });
+      
+      // Notify the client that the "turn red" ability has been used
+      socket.emit('turn red ability used');
     }
   });
-  
+
   socket.on('disconnect', () => {
     for (let groupId in groups) {
       groups[groupId] = groups[groupId].filter(user => user.id !== socket.id);
@@ -91,7 +97,7 @@ function startGame(groupId) {
       score: 0,
       votedFor: null,
       eliminated: false,
-      usedTurnRed: false
+      usedTurnRed: false // Track if the player has used their "turn red" ability
     }))
   };
 

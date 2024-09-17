@@ -20,6 +20,7 @@ export default function Group() {
   const [votedFor, setVotedFor] = useState('');
   const [selectedPlayer, setSelectedPlayer] = useState('');
   const [showPlayerList, setShowPlayerList] = useState(false);
+  const [turnRedAbilityUsed, setTurnRedAbilityUsed] = useState(false);
   const [message, setMessage] = useState('');
   const [round, setRound] = useState(1);
   const router = useRouter();
@@ -72,10 +73,6 @@ export default function Group() {
       setMessage(`${from} turned you into a red player!`);
       setTimeout(() => setMessage(''), 10000);
     });
-    socket.on('turn red confirmation', ({ to }) => {
-      setMessage(`You turned ${to} into a red player!`);
-      setTimeout(() => setMessage(''), 10000);
-    });
     socket.on('player color changed', ({ player, newColor }) => {
       setGameState((prevState) => ({
         ...prevState,
@@ -84,7 +81,10 @@ export default function Group() {
         ),
       }));
     });
-  }
+    socket.on('turn red ability used', () => {
+      setTurnRedAbilityUsed(true);
+    });
+  };
 
   const handleGameStart = (state) => {
     setGameState(state);
@@ -124,16 +124,10 @@ export default function Group() {
   };
 
   const handleTurnRed = () => {
-    if (groupId && selectedPlayer && !myPlayer.usedTurnRed) {
+    if (groupId && selectedPlayer && !turnRedAbilityUsed) {
       socket.emit('turn red', { groupId, targetPlayer: selectedPlayer });
       setShowPlayerList(false);
-      // Update local state to reflect that the ability has been used
-      setGameState((prevState) => ({
-        ...prevState,
-        players: prevState.players.map((p) =>
-          p.name === username ? { ...p, usedTurnRed: true } : p
-        ),
-      }));
+      setTurnRedAbilityUsed(true);
     }
   };
 
@@ -176,14 +170,16 @@ export default function Group() {
               handleVote={handleVote} 
             />
           )}
-          {myPlayer?.color === 'red' && phase === 'playing' && !myPlayer.usedTurnRed && (
+         {myPlayer?.color === 'red' && phase === 'playing' && !turnRedAbilityUsed && (
             <TurnRedButton 
-              activePlayers={activePlayers.filter(p => p.color !== 'red' && p.name !== username)} 
+            activePlayers={activePlayers.filter(p => p.color !== 'red' && p.name !== username)} 
               selectedPlayer={selectedPlayer} 
               setSelectedPlayer={setSelectedPlayer} 
               handleTurnRed={handleTurnRed}
               showPlayerList={showPlayerList}
               setShowPlayerList={setShowPlayerList}
+              turnRedAbilityUsed={turnRedAbilityUsed}
+              
             />
           )}
           <ul className={styles.userList}>

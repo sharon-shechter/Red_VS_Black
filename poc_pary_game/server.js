@@ -57,21 +57,24 @@ io.on('connection', (socket) => {
 
   socket.on('turn red', ({ groupId, targetPlayer }) => {
     const game = games[groupId];
+    if (!game) return;
+
     const senderPlayer = game.players.find(p => p.id === socket.id);
     const targetPlayerObj = game.players.find(p => p.name === targetPlayer);
-  
-    if (senderPlayer && targetPlayerObj && senderPlayer.color === 'red' && !senderPlayer.usedTurnRed) {
-      senderPlayer.usedTurnRed = true; // Mark the ability as used
+
+    if (senderPlayer && targetPlayerObj && senderPlayer.color === 'red' && !game.turnRedAbilityUsed) {
+      game.turnRedAbilityUsed = true; // Mark the ability as used for the entire game
       targetPlayerObj.color = 'red'; // Turn the target player red
-      
-      // Send the message to the target player
-      io.to(targetPlayerObj.id).emit('turn red message', { from: senderPlayer.name, to: 'You' });
-  
-      // Send a confirmation back to the sender (red player)
-      socket.emit('turn red message', { from: 'You', to: targetPlayer });
-      
-      // Notify the client that the "turn red" ability has been used
-      socket.emit('turn red ability used');
+
+      // Send the updated game state
+      io.to(groupId).emit('player color changed', { player: targetPlayerObj.name, newColor: 'red' });
+      io.to(groupId).emit('turn red ability used');
+      io.to(groupId).emit('update game state', game);
+
+      // Notify the target player that they've been turned red
+      io.to(targetPlayerObj.id).emit('turn red message', { from: senderPlayer.name });
+    } else {
+      socket.emit('error', 'Unable to use turn red ability.');
     }
   });
 
@@ -90,14 +93,14 @@ function startGame(groupId) {
   games[groupId] = {
     phase: GAME_PHASES.PLAYING,
     round: 1,
+    turnRedAbilityUsed: false, // Track if the ability has been used in the game
     players: players.map(player => ({
       id: player.id,
       name: player.name,
       color: player.id === redPlayer.id ? 'red' : 'black',
       score: 0,
       votedFor: null,
-      eliminated: false,
-      usedTurnRed: false // Track if the player has used their "turn red" ability
+      eliminated: false
     }))
   };
 

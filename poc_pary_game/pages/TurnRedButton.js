@@ -8,7 +8,7 @@ export function TurnRedButton({
   turnRedAbilityUsed
 }) {
   if (turnRedAbilityUsed) {
-    return null; // Don't render the button if the ability has been used
+    return null;
   }
 
   return (

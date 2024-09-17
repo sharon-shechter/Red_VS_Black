@@ -4,20 +4,29 @@ import styles from '../styles/Index.module.css';
 export default function Index() {
   const router = useRouter();
 
+  // Function to generate a random group ID
+  const generateGroupId = () => {
+    const characters = 'abcdefghijklmnopqrstuvwxyz';
+    let groupId = '';
+    for (let i = 0; i < 8; i++) {
+      groupId += characters.charAt(Math.floor(Math.random() * characters.length));
+    }
+    return groupId;
+  };
+
+  // Function to handle group creation
   const makeGroup = async () => {
     try {
-      const response = await fetch('http://localhost:5000/make-group');
-      const data = await response.json();
-      const groupId = data.groupId;
+      // Generate groupId locally
+      const groupId = generateGroupId();
 
-      if (groupId) {
-        localStorage.setItem('groupId', groupId);
-        router.push(`/group?groupId=${groupId}`);
-      } else {
-        console.error('groupId is undefined');
-      }
+      // Save the groupId to localStorage
+      localStorage.setItem('groupId', groupId);
+
+      // Redirect to the group page
+      router.push(`/group?groupId=${groupId}`);
     } catch (error) {
-      console.error('Error fetching groupId:', error);
+      console.error('Error generating groupId:', error);
     }
   };
 

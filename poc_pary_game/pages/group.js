@@ -25,47 +25,48 @@ export default function Group() {
   const [round, setRound] = useState(1);
   const router = useRouter();
   const { groupId } = router.query;
-
   useEffect(() => {
-    socket = io('http://localhost:3001');
-    socketEvents();
-    return () => socket.disconnect();
-  }, []);
+    console.log("groupId from query:", groupId);  // Add this log
+    if (groupId) {
+      socket = io('http://localhost:3001');
+      socketEvents();
+      return () => socket.disconnect();
+    }
+  }, [groupId]);
+
 
   useEffect(() => {
     let interval;
+    // Handle timers for playing and voting phases
     if (phase === 'playing' && playingTimer > 0) {
-      interval = setInterval(() => {
-        setPlayingTimer((prevTimer) => prevTimer - 1);
-      }, 1000);
+      interval = setInterval(() => setPlayingTimer(prev => prev - 1), 1000);
     } else if (phase === 'voting' && votingTimer > 0) {
-      interval = setInterval(() => {
-        setVotingTimer((prevTimer) => prevTimer - 1);
-      }, 1000);
+      interval = setInterval(() => setVotingTimer(prev => prev - 1), 1000);
     } else if (playingTimer === 0 && phase === 'playing') {
       clearInterval(interval);
       setPhase('voting');
-      setVotingTimer(20);
+      setVotingTimer(20);  // 20 seconds for voting
     } else if (votingTimer === 0 && phase === 'voting') {
       clearInterval(interval);
-      socket.emit('voting ended', { groupId });
+      // Removed the socket.emit('voting ended') as the server now handles this internally
     }
     return () => clearInterval(interval);
   }, [phase, playingTimer, votingTimer, groupId]);
 
   const socketEvents = () => {
+    // Handling all socket events
     socket.on('update users', (users) => setUsers(users));
     socket.on('error', (message) => setError(message));
     socket.on('game started', (state) => handleGameStart(state));
     socket.on('round start', ({ round }) => {
       setRound(round);
-      setPlayingTimer(30);
+      setPlayingTimer(30);  // 30 seconds for playing phase
       setPhase('playing');
       setVotedFor('');
     });
     socket.on('voting start', () => {
       setPhase('voting');
-      setVotingTimer(20);
+      setVotingTimer(20);  // 20 seconds for voting phase
     });
     socket.on('player eliminated', ({ eliminatedPlayer }) => handlePlayerElimination(eliminatedPlayer));
     socket.on('game over', ({ winner }) => setError(`Game Over! ${winner} wins!`));
@@ -81,15 +82,17 @@ export default function Group() {
         ),
       }));
     });
-    socket.on('turn red ability used', () => {
-      setTurnRedAbilityUsed(true);
+    socket.on('turn red ability used', () => setTurnRedAbilityUsed(true));
+    // New event listener for general game state updates
+    socket.on('update game state', (newState) => {
+      setGameState(newState);
     });
   };
 
   const handleGameStart = (state) => {
     setGameState(state);
     setPhase('playing');
-    setPlayingTimer(30);
+    setPlayingTimer(30);  // Start the playing timer
   };
 
   const handlePlayerElimination = (eliminatedPlayer) => {
@@ -119,7 +122,7 @@ export default function Group() {
   const handleVote = () => {
     if (groupId && votedFor) {
       socket.emit('submit vote', { groupId, votedFor });
-      setVotedFor('');
+      setVotedFor('');  // Clear the vote after submission
     }
   };
 
@@ -172,14 +175,13 @@ export default function Group() {
           )}
          {myPlayer?.color === 'red' && phase === 'playing' && !turnRedAbilityUsed && (
             <TurnRedButton 
-            activePlayers={activePlayers.filter(p => p.color !== 'red' && p.name !== username)} 
+              activePlayers={activePlayers.filter(p => p.color !== 'red' && p.name !== username)} 
               selectedPlayer={selectedPlayer} 
               setSelectedPlayer={setSelectedPlayer} 
               handleTurnRed={handleTurnRed}
               showPlayerList={showPlayerList}
               setShowPlayerList={setShowPlayerList}
               turnRedAbilityUsed={turnRedAbilityUsed}
-              
             />
           )}
           <ul className={styles.userList}>

@@ -1,9 +1,9 @@
-import axios from 'axios';
+const axios = require('axios');
 
 const BASE_URL = 'http://localhost:5000';  // Your Flask server URL
 
 // Function to create a new game
-export async function createGame(gameId) {
+async function createGame(gameId) {
     try {
         const response = await axios.post(`${BASE_URL}/create_game/${gameId}`);
         return response.data;
@@ -14,7 +14,7 @@ export async function createGame(gameId) {
 }
 
 // Function to delete a game
-export async function deleteGame(gameId) {
+async function deleteGame(gameId) {
     try {
         const response = await axios.delete(`${BASE_URL}/delete_game/${gameId}`);
         return response.data;
@@ -25,7 +25,7 @@ export async function deleteGame(gameId) {
 }
 
 // Function to get game details
-export async function getGame(gameId) {
+async function getGame(gameId) {
     try {
         const response = await axios.get(`${BASE_URL}/get_game/${gameId}`);
         return response.data;
@@ -36,7 +36,7 @@ export async function getGame(gameId) {
 }
 
 // Function to add a player to a game
-export async function addPlayerToGame(gameId, playerName, playerColor) {
+async function addPlayerToGame(gameId, playerName, playerColor) {
     try {
         const response = await axios.post(`${BASE_URL}/add_player/${gameId}`, {
             name: playerName,
@@ -48,3 +48,10 @@ export async function addPlayerToGame(gameId, playerName, playerColor) {
         throw error;
     }
 }
+
+module.exports = {
+    createGame,
+    deleteGame,
+    getGame,
+    addPlayerToGame
+};

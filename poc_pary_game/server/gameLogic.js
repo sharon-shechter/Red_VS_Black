@@ -2,6 +2,7 @@ const axios = require('axios');
 const { v4: uuidv4 } = require('uuid');
 const _ = require('lodash');
 const { GAME_PHASES, groups, games } = require('./gameState');
+const { deleteGame } = require('../api/apiService');
 
 function handleJoinGroup(io, socket, { groupId, username }) {
 
@@ -125,21 +126,6 @@ function processVotes(groupId) {
       }
     }
   });
-
-  // Print the voting results for debugging purposes
-  console.log(`Voting results for group ${groupId}:`, votingResults);
-
-  // Send the voting results along with the groupId to the Flask server
-  axios.post('http://localhost:5000/receive_voting_results', {
-      groupId: groupId,  // Send groupId
-      votingResults: votingResults  // Send the voting results
-    })
-    .then(response => {
-      console.log('Voting results sent successfully to Flask:', response.data);
-    })
-    .catch(error => {
-      console.error('Error sending voting results to Flask:', error.message);
-    });
 }
   
 
@@ -164,12 +150,22 @@ function checkWinCondition(groupId) {
   return redPlayers.length === 0 || redPlayers.length === activePlayers.length;
 }
 
-function endGame(io, groupId) {
+async function endGame(io, groupId) {
   const game = games[groupId];
   const redPlayers = game.players.filter(p => p.color === 'red' && !p.eliminated);
   const winner = redPlayers.length > 0 ? 'Red team' : 'Black team';
+  
   io.to(groupId).emit('game over', { winner });
-  delete games[groupId];
+  
+  // Delete the game from the Flask server
+  try {
+      await deleteGame(groupId);  // Call the delete API when the game ends
+      console.log(`Game ${groupId} deleted successfully from the server`);
+  } catch (error) {
+      console.error('Failed to delete game:', error);
+  }
+  
+  delete games[groupId];  // Delete the game from the local game state
 }
 
 function resetVotes(groupId) {

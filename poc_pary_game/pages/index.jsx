@@ -1,6 +1,6 @@
 import { useRouter } from 'next/router';
 import styles from '../styles/Index.module.css';
-
+import { createGame } from '../api/apiService';
 export default function Index() {
   const router = useRouter();
 
@@ -19,6 +19,9 @@ export default function Index() {
     try {
       // Generate groupId locally
       const groupId = generateGroupId();
+
+      // Call the API to create the game in the backend
+      await createGame(groupId);
 
       // Save the groupId to localStorage
       localStorage.setItem('groupId', groupId);

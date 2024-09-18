@@ -1,10 +1,9 @@
+const axios = require('axios');  
 const { v4: uuidv4 } = require('uuid');
 const _ = require('lodash');
 const { GAME_PHASES, groups, games } = require('./gameState');
 
 function handleJoinGroup(io, socket, { groupId, username }) {
-  console.error('for debugging, groupId:', groupId);  // Log the error
-  console.log('groups object:', groups); // Log the groups object to inspect it
 
   
   if (!groups[groupId]) {
@@ -16,11 +15,8 @@ function handleJoinGroup(io, socket, { groupId, username }) {
 }
 
 function handleStartGame(io, socket, { groupId }) {
-  console.log("got here")
-  process.stdout.write(""); // Force log flush
   if (groups[groupId] && groups[groupId].length < 2) {
     socket.emit('error', 'At least two players are required to start the game.');
-    console.log("got here")
   } else {
     startGame(io, groupId);
   }
@@ -36,7 +32,6 @@ function handleSubmitVote(io, socket, { groupId, votedFor }) {
 }
 
 function handleTurnRed(io, socket, { groupId, targetPlayer }) {
-  console.log("here!!!!!!!")
   const game = games[groupId];
   if (!game) return;
 
@@ -112,15 +107,41 @@ function runGameLoop(io, groupId) {
 
 function processVotes(groupId) {
   const game = games[groupId];
+  
+  // Initialize an object to hold voting results
+  const votingResults = {};
+
   game.players.forEach(player => {
     if (!player.eliminated && player.votedFor) {
       const votedPlayer = game.players.find(p => p.name === player.votedFor && !p.eliminated);
       if (votedPlayer) {
         votedPlayer.score++;
+        
+        // Update votingResults hash map
+        if (!votingResults[votedPlayer.name]) {
+          votingResults[votedPlayer.name] = 0;
+        }
+        votingResults[votedPlayer.name]++;
       }
     }
   });
+
+  // Print the voting results for debugging purposes
+  console.log(`Voting results for group ${groupId}:`, votingResults);
+
+  // Send the voting results along with the groupId to the Flask server
+  axios.post('http://localhost:5000/receive_voting_results', {
+      groupId: groupId,  // Send groupId
+      votingResults: votingResults  // Send the voting results
+    })
+    .then(response => {
+      console.log('Voting results sent successfully to Flask:', response.data);
+    })
+    .catch(error => {
+      console.error('Error sending voting results to Flask:', error.message);
+    });
 }
+  
 
 function eliminatePlayer(io, groupId) {
   const game = games[groupId];

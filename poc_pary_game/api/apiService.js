@@ -48,10 +48,33 @@ async function addPlayerToGame(gameId, playerName, playerColor) {
         throw error;
     }
 }
+// Function to update the player's vote count
+async function updatePlayerVotes(gameId, playerName, votes) {
+    try {
+        const response = await axios.patch(`${BASE_URL}/update_player_votes/${gameId}/${playerName}`, {
+            votes: votes
+        });
+        return response.data;
+    } catch (error) {
+        console.error('Error updating player votes:', error.response ? error.response.data : error.message);
+        throw error;
+    }
+}
+async function analyzeGame(gameId) {
+    try {
+        const response = await axios.get(`${BASE_URL}/analyze_game/${gameId}`);
+        return response.data.analysis;
+    } catch (error) {
+        console.error('Error analyzing game:', error.response ? error.response.data : error.message);
+        throw error;
+    }
+}
 
 module.exports = {
     createGame,
     deleteGame,
     getGame,
-    addPlayerToGame
+    addPlayerToGame,
+    updatePlayerVotes,
+    analyzeGame  // Export the new function
 };

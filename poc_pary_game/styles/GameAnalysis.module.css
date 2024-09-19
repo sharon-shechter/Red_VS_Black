@@ -1,0 +1,22 @@
+/* GameAnalysis.module.css */
+.popup {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 300px;
+    padding: 20px;
+    background-color: #333;
+    color: rgb(219, 190, 190);
+    border-radius: 10px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    text-align: center;
+    z-index: 1000;
+    opacity: 1;
+    transition: opacity 0.5s ease-in-out;  /* Add a smooth transition */
+  }
+  
+  .hide {
+    opacity: 0;
+    transition: opacity 0.5s ease-in-out;  /* Ensure the transition is smooth */
+  }
+  

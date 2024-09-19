@@ -6,12 +6,13 @@ import { VotingSection } from '../components/VotingSection';
 import { GameActionButtons } from '../components/GameActionButtons';
 import { JoinForm } from '../components/JoinForm';
 import { useSocket } from '../hooks/useSocket';
+import { GameAnalysis } from '../components/gameAnalysis';  // Import the GameAnalysis component
 
 export default function Group() {
   const [username, setUsername] = useState('');
   const [joined, setJoined] = useState(false);
   const [votedFor, setVotedFor] = useState('');
-  const [turnRedAbilityUsed, setTurnRedAbilityUsed] = useState(false); // Added state
+  const [turnRedAbilityUsed, setTurnRedAbilityUsed] = useState(false);
 
   const router = useRouter();
   const { groupId } = router.query;
@@ -30,8 +31,9 @@ export default function Group() {
     handleVote, 
     handleTurnRed, 
     myPlayer, 
-    activePlayers 
-  } = useSocket(groupId, username, setUsername, setJoined, votedFor, setVotedFor, turnRedAbilityUsed, setTurnRedAbilityUsed);  // Added the necessary arguments
+    activePlayers,
+    gameAnalysis  // Get game analysis from useSocket
+  } = useSocket(groupId, username, setUsername, setJoined, votedFor, setVotedFor, turnRedAbilityUsed, setTurnRedAbilityUsed);
 
   const turnRedTargetPlayers = activePlayers.filter(player => 
     player.name !== username && player.color !== 'red'
@@ -57,7 +59,7 @@ export default function Group() {
             myPlayer={myPlayer}
             activePlayers={turnRedTargetPlayers}
             handleTurnRed={handleTurnRed}
-            turnRedAbilityUsed={turnRedAbilityUsed}  // Pass the ability used flag
+            turnRedAbilityUsed={turnRedAbilityUsed}
           />
 
           <GameInfo 
@@ -84,6 +86,8 @@ export default function Group() {
               </li>
             ))}
           </ul>
+
+          {/* Add the GameAnalysis component */}
         </>
       )}
     </div>

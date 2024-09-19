@@ -1,21 +1,23 @@
 class Player:
-    def __init__(self, name, color):
+    def __init__(self, name, color, vote_count=0):
         """
         Initialize a new Player object.
 
         :param name: The name of the player.
         :param color: The color of the player (e.g., 'red' or 'black').
+        :param vote_count: The number of votes the player has received.
         """
         self.name = name
         self.color = color
+        self.vote_count = vote_count  # New field to track votes
 
     def __repr__(self):
         """
         Return a string representation of the Player object.
 
-        :return: A string describing the player's name and color.
+        :return: A string describing the player's name, color, and vote count.
         """
-        return f"Player(name={self.name}, color={self.color})"
+        return f"Player(name={self.name}, color={self.color}, vote_count={self.vote_count})"
 
     def to_dict(self):
         """
@@ -25,7 +27,8 @@ class Player:
         """
         return {
             "name": self.name,
-            "color": self.color
+            "color": self.color,
+            "vote_count": self.vote_count  # Include vote count in the dictionary
         }
 
     @staticmethod
@@ -36,4 +39,4 @@ class Player:
         :param player_dict: A dictionary containing player details.
         :return: A Player object.
         """
-        return Player(player_dict['name'], player_dict['color'])
+        return Player(player_dict['name'], player_dict['color'], player_dict.get('vote_count', 0))

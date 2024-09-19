@@ -12,6 +12,7 @@ export const useSocket = (groupId, username, setUsername, setJoined, votedFor, s
   const [votingTimer, setVotingTimer] = useState(0);
   const [message, setMessage] = useState('');
   const [round, setRound] = useState(1);
+  
 
   useEffect(() => {
     if (groupId) {
@@ -70,6 +71,12 @@ export const useSocket = (groupId, username, setUsername, setJoined, votedFor, s
       console.log('Red ability used!');
       setTurnRedAbilityUsed(true);  // Ensure this function is available
     });
+    
+    // Add event listener for 'game analysis'
+  socket.on('game analysis', ({ analysis }) => {
+    setMessage(analysis);  // Display analysis message in the component
+  });
+
     socket.on('update game state', (newState) => setGameState(newState));
   };
 

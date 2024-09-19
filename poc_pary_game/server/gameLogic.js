@@ -2,8 +2,9 @@ const axios = require('axios');
 const { v4: uuidv4 } = require('uuid');
 const _ = require('lodash');
 const { GAME_PHASES, groups, games } = require('./gameState');
-const { deleteGame } = require('../api/apiService');
-const { addPlayerToGame } = require('../api/apiService');  // Import the API function
+const { createGame, deleteGame, getGame, addPlayerToGame, updatePlayerVotes  } = require('../api/apiService');
+const { analyzeGame } = require('../api/apiService');  // Import the new API service
+
 
 
 async function handleJoinGroup(io, socket, { groupId, username }) {
@@ -108,6 +109,17 @@ function runGameLoop(io, groupId) {
   
   io.to(groupId).emit('round start', { round: game.round });
   
+  // If the round is even, call the GPT API to analyze the game
+  if (game.round % 2 === 0) {
+    analyzeGame(groupId)
+      .then(analysis => {
+        io.to(groupId).emit('game analysis', { analysis });
+      })
+      .catch(error => {
+        console.error('Error getting game analysis:', error);
+      });
+  }
+
   setTimeout(() => {
     game.phase = GAME_PHASES.VOTING;
     io.to(groupId).emit('voting start');
@@ -129,23 +141,27 @@ function runGameLoop(io, groupId) {
 
 function processVotes(groupId) {
   const game = games[groupId];
-  
-  // Initialize an object to hold voting results
+
   const votingResults = {};
 
   game.players.forEach(player => {
-    if (!player.eliminated && player.votedFor) {
-      const votedPlayer = game.players.find(p => p.name === player.votedFor && !p.eliminated);
-      if (votedPlayer) {
-        votedPlayer.score++;
-        
-        // Update votingResults hash map
-        if (!votingResults[votedPlayer.name]) {
-          votingResults[votedPlayer.name] = 0;
-        }
-        votingResults[votedPlayer.name]++;
+      if (!player.eliminated && player.votedFor) {
+          const votedPlayer = game.players.find(p => p.name === player.votedFor && !p.eliminated);
+          if (votedPlayer) {
+              votedPlayer.score++;
+
+              // Update the voting results count
+              if (!votingResults[votedPlayer.name]) {
+                  votingResults[votedPlayer.name] = 0;
+              }
+              votingResults[votedPlayer.name]++;
+
+              // Make the API call to update vote count in the Flask server
+              updatePlayerVotes(groupId, votedPlayer.name, votingResults[votedPlayer.name])
+                  .then(response => console.log(`Updated vote count for player ${votedPlayer.name}:`, response))
+                  .catch(error => console.error('Error updating vote count:', error));
+          }
       }
-    }
   });
 }
   

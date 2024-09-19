@@ -3,6 +3,8 @@ from game import Game
 from gameDB import GameDB
 from Player import Player
 from flask_cors import CORS  # Import CORS
+import openai
+
 
 app = Flask(__name__)
 CORS(app) 
@@ -52,6 +54,61 @@ def add_player(game_id):
     new_player = Player(player_name, player_color)
     game.add_player(new_player)
     return jsonify({"message": f"Player {player_name} added to game {game_id}"}), 200
+
+
+@app.route('/update_player_votes/<game_id>/<player_name>', methods=['PATCH'])
+def update_player_votes(game_id, player_name):
+    data = request.get_json()
+    votes = data.get('votes')
+    
+    game = game_db.get_game(game_id)
+    if game is None:
+        return jsonify({"message": "Game not found"}), 404
+
+    # Find the player and update the vote count
+    player = next((p for p in game.players if p.name == player_name), None)
+    if player is None:
+        return jsonify({"message": "Player not found"}), 404
+
+    player.vote_count += votes  # Increment the vote count
+    return jsonify({"message": f"Player {player_name} now has {player.vote_count} votes"}), 200
+
+@app.route('/analyze_game/<game_id>', methods=['GET'])
+def analyze_game(game_id):
+    game = game_db.get_game(game_id)
+    if game is None:
+        return jsonify({"message": "Game not found"}), 404
+
+    # Prepare game data for GPT analysis
+    game_data = game.to_dict()
+    
+    # Call the GPT API
+    analysis = get_game_analysis_from_gpt(game_data)
+    
+    return jsonify({"analysis": analysis}), 200
+
+import openai
+
+def get_game_analysis_from_gpt(game_data):
+    openai.api_key = "your api key"
+
+    # Prepare the message format for the chat model
+    messages = [
+        {"role": "system", "content": "You are a game analyst."},
+        {"role": "user", "content": f"Analyze the current game state: {game_data}"}
+    ]
+
+    response = openai.ChatCompletion.create(
+        model="gpt-4",  # You can also use "gpt-3.5-turbo" if preferred
+        messages=messages,
+        max_tokens=100,
+        n=1,
+        stop=None,
+        temperature=0.7,
+    )
+
+    return response['choices'][0]['message']['content'].strip()
+
 
 if __name__ == '__main__':
     app.run(port=5000, debug=True)

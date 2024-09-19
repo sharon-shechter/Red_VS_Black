@@ -3,18 +3,39 @@ const { v4: uuidv4 } = require('uuid');
 const _ = require('lodash');
 const { GAME_PHASES, groups, games } = require('./gameState');
 const { deleteGame } = require('../api/apiService');
+const { addPlayerToGame } = require('../api/apiService');  // Import the API function
 
-function handleJoinGroup(io, socket, { groupId, username }) {
 
+async function handleJoinGroup(io, socket, { groupId, username }) {
   
+  // If the group does not exist, create it
   if (!groups[groupId]) {
     groups[groupId] = [];
   }
+
+  // Add the player to the group locally
   groups[groupId].push({ id: socket.id, name: username });
+
+  // Make the API call to add the player to the game on the Flask server
+  try {
+    // Assign a color to the player (e.g., randomly or using some logic)
+    const playerColor = 'black';  // Set default color for now, you can modify this logic as needed
+    
+    // Call the Flask API to add the player
+    await addPlayerToGame(groupId, username, playerColor);
+
+    console.log(`Player ${username} added to game ${groupId} successfully on the server`);
+
+  } catch (error) {
+    console.error('Failed to add player to game:', error);
+  }
+
+  // Join the group on the Socket.io server
   socket.join(groupId);
+
+  // Notify all users in the group about the new player
   io.to(groupId).emit('update users', groups[groupId].map(user => user.name));
 }
-
 function handleStartGame(io, socket, { groupId }) {
   if (groups[groupId] && groups[groupId].length < 2) {
     socket.emit('error', 'At least two players are required to start the game.');

@@ -90,7 +90,7 @@ def analyze_game(game_id):
 import openai
 
 def get_game_analysis_from_gpt(game_data):
-    openai.api_key = "your api key"
+    openai.api_key = "API KEY"
 
     # Prepare the message format for the chat model
     messages = [

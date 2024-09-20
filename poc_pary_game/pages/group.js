@@ -32,7 +32,7 @@ export default function Group() {
     handleTurnRed, 
     myPlayer, 
     activePlayers,
-    gameAnalysis  // Get game analysis from useSocket
+    analysis  // Now we get analysis from useSocket
   } = useSocket(groupId, username, setUsername, setJoined, votedFor, setVotedFor, turnRedAbilityUsed, setTurnRedAbilityUsed);
 
   const turnRedTargetPlayers = activePlayers.filter(player => 
@@ -87,7 +87,8 @@ export default function Group() {
             ))}
           </ul>
 
-          {/* Add the GameAnalysis component */}
+          {/* Add the GameAnalysis component and pass the analysis */}
+          <GameAnalysis analysis={analysis} />
         </>
       )}
     </div>

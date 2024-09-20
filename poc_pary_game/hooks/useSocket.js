@@ -12,6 +12,8 @@ export const useSocket = (groupId, username, setUsername, setJoined, votedFor, s
   const [votingTimer, setVotingTimer] = useState(0);
   const [message, setMessage] = useState('');
   const [round, setRound] = useState(1);
+  const [analysis, setAnalysis] = useState('');
+
   
 
   useEffect(() => {
@@ -73,9 +75,9 @@ export const useSocket = (groupId, username, setUsername, setJoined, votedFor, s
     });
     
     // Add event listener for 'game analysis'
-  socket.on('game analysis', ({ analysis }) => {
-    setMessage(analysis);  // Display analysis message in the component
-  });
+    socket.on('game analysis', ({ analysis }) => {
+        setAnalysis(analysis);  // Store analysis in the analysis state
+      });
 
     socket.on('update game state', (newState) => setGameState(newState));
   };
@@ -128,6 +130,20 @@ export const useSocket = (groupId, username, setUsername, setJoined, votedFor, s
   const activePlayers = gameState?.players.filter((player) => !player.eliminated) || [];
 
   return {
-    gameState, users, error, message, phase, round, playingTimer, votingTimer, setVotedFor, handleSubmit, handleStartGame, handleVote, handleTurnRed, myPlayer, activePlayers
+    gameState,
+    users,
+    error,
+    message,
+    phase,
+    round,
+    playingTimer,
+    votingTimer,
+    handleSubmit,
+    handleStartGame,
+    handleVote,
+    handleTurnRed,
+    myPlayer,
+    activePlayers,
+    analysis 
   };
 };

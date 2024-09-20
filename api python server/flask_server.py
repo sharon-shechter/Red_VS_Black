@@ -73,6 +73,17 @@ def update_player_votes(game_id, player_name):
     player.vote_count += votes  # Increment the vote count
     return jsonify({"message": f"Player {player_name} now has {player.vote_count} votes"}), 200
 
+@app.route('/list_games', methods=['GET'])
+def list_games():
+    games = game_db.list_games()
+
+    # Prepare a list of games for JSON response
+    games_list = {game_id: game.to_dict() for game_id, game in games.items()}
+    
+    return jsonify(games_list), 200
+
+
+
 @app.route('/analyze_game/<game_id>', methods=['GET'])
 def analyze_game(game_id):
     game = game_db.get_game(game_id)

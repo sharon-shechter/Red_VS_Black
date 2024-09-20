@@ -99,7 +99,7 @@ def get_game_analysis_from_gpt(game_data):
     ]
 
     response = openai.ChatCompletion.create(
-        model="gpt-4",  # You can also use "gpt-3.5-turbo" if preferred
+        model="gpt-4",  
         messages=messages,
         max_tokens=100,
         n=1,

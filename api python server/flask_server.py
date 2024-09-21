@@ -40,21 +40,20 @@ def get_game(game_id):
 
     return jsonify(game.to_dict()), 200
 
-# Endpoint to add a player to a game
 @app.route('/add_player/<game_id>', methods=['POST'])
 def add_player(game_id):
     data = request.get_json()
     player_name = data.get('name')
     player_color = data.get('color')
+    player_photo = data.get('photo')  # Get the photo if provided
 
     game = game_db.get_game(game_id)
     if game is None:
         return jsonify({"message": "Game not found"}), 404
 
-    new_player = Player(player_name, player_color)
+    new_player = Player(player_name, player_color, player_photo)  # Pass photo to the Player class
     game.add_player(new_player)
     return jsonify({"message": f"Player {player_name} added to game {game_id}"}), 200
-
 
 @app.route('/update_player_votes/<game_id>/<player_name>', methods=['PATCH'])
 def update_player_votes(game_id, player_name):
@@ -98,7 +97,7 @@ def analyze_game(game_id):
     
     return jsonify({"analysis": analysis}), 200
 
-import openai
+import openai 
 
 def get_game_analysis_from_gpt(game_data):
     openai.api_key = "API KEY"

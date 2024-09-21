@@ -3,7 +3,17 @@ import io from 'socket.io-client';
 
 let socket;
 
-export const useSocket = (groupId, username, setUsername, setJoined, votedFor, setVotedFor, turnRedAbilityUsed, setTurnRedAbilityUsed) => {
+export const useSocket = (
+  groupId, 
+  username, 
+  setUsername, 
+  setJoined, 
+  votedFor, 
+  setVotedFor, 
+  turnRedAbilityUsed, 
+  setTurnRedAbilityUsed,
+  photo  // Add the photo parameter here
+) => {
   const [users, setUsers] = useState([]);
   const [error, setError] = useState('');
   const [gameState, setGameState] = useState(null);
@@ -13,8 +23,6 @@ export const useSocket = (groupId, username, setUsername, setJoined, votedFor, s
   const [message, setMessage] = useState('');
   const [round, setRound] = useState(1);
   const [analysis, setAnalysis] = useState('');
-
-  
 
   useEffect(() => {
     if (groupId) {
@@ -68,16 +76,13 @@ export const useSocket = (groupId, username, setUsername, setJoined, votedFor, s
       }));
     });
     
-    // Fix here: Ensure setTurnRedAbilityUsed is called
     socket.on('turn red ability used', () => {
-      console.log('Red ability used!');
-      setTurnRedAbilityUsed(true);  // Ensure this function is available
+      setTurnRedAbilityUsed(true);
     });
-    
-    // Add event listener for 'game analysis'
+
     socket.on('game analysis', ({ analysis }) => {
-        setAnalysis(analysis);  // Store analysis in the analysis state
-      });
+      setAnalysis(analysis);
+    });
 
     socket.on('update game state', (newState) => setGameState(newState));
   };
@@ -101,7 +106,8 @@ export const useSocket = (groupId, username, setUsername, setJoined, votedFor, s
   const handleSubmit = (e) => {
     e.preventDefault();
     if (username && groupId) {
-      socket.emit('join group', { groupId, username });
+      // Send the photo along with the username when joining the group
+      socket.emit('join group', { groupId, username, photo });
       setJoined(true);
     }
   };
@@ -122,7 +128,6 @@ export const useSocket = (groupId, username, setUsername, setJoined, votedFor, s
   const handleTurnRed = (targetPlayer) => {
     if (groupId && targetPlayer) {
       socket.emit('turn red', { groupId, targetPlayer });
-      console.log(`Attempting to turn ${targetPlayer} red`);
     }
   };
 
@@ -138,7 +143,7 @@ export const useSocket = (groupId, username, setUsername, setJoined, votedFor, s
     round,
     playingTimer,
     votingTimer,
-    handleSubmit,
+    handleSubmit,  // Now the handleSubmit sends the photo
     handleStartGame,
     handleVote,
     handleTurnRed,

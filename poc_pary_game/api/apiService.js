@@ -36,11 +36,12 @@ async function getGame(gameId) {
 }
 
 // Function to add a player to a game
-async function addPlayerToGame(gameId, playerName, playerColor) {
+async function addPlayerToGame(gameId, playerName, playerColor, playerPhoto) {
     try {
         const response = await axios.post(`${BASE_URL}/add_player/${gameId}`, {
             name: playerName,
-            color: playerColor
+            color: playerColor,
+            photo: playerPhoto  // Include the photo in the request
         });
         return response.data;
     } catch (error) {
@@ -48,6 +49,7 @@ async function addPlayerToGame(gameId, playerName, playerColor) {
         throw error;
     }
 }
+
 // Function to update the player's vote count
 async function updatePlayerVotes(gameId, playerName, votes) {
     try {

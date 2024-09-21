@@ -6,27 +6,22 @@ const { createGame, deleteGame, getGame, addPlayerToGame, updatePlayerVotes  } =
 const { analyzeGame } = require('../api/apiService');  // Import the new API service
 
 
-
-async function handleJoinGroup(io, socket, { groupId, username }) {
-  
+let gameTimeouts = {};  // Store timeout IDs for each game
+async function handleJoinGroup(io, socket, { groupId, username, photo = null }) {
   // If the group does not exist, create it
   if (!groups[groupId]) {
     groups[groupId] = [];
   }
 
-  // Add the player to the group locally
-  groups[groupId].push({ id: socket.id, name: username });
+  // Add the player to the group, including their photo (can be null)
+  groups[groupId].push({ id: socket.id, name: username, photo });
 
   // Make the API call to add the player to the game on the Flask server
   try {
-    // Assign a color to the player (e.g., randomly or using some logic)
-    const playerColor = 'black';  // Set default color for now, you can modify this logic as needed
-    
-    // Call the Flask API to add the player
-    await addPlayerToGame(groupId, username, playerColor);
+    const playerColor = 'black'; // Set default color for now
+    await addPlayerToGame(groupId, username, playerColor, photo); // Send photo to the API as well
 
-    console.log(`Player ${username} added to game ${groupId} successfully on the server`);
-
+    console.log(`Player ${username} added to game ${groupId} successfully on the server.`);
   } catch (error) {
     console.error('Failed to add player to game:', error);
   }
@@ -34,15 +29,8 @@ async function handleJoinGroup(io, socket, { groupId, username }) {
   // Join the group on the Socket.io server
   socket.join(groupId);
 
-  // Notify all users in the group about the new player
-  io.to(groupId).emit('update users', groups[groupId].map(user => user.name));
-}
-function handleStartGame(io, socket, { groupId }) {
-  if (groups[groupId] && groups[groupId].length < 2) {
-    socket.emit('error', 'At least two players are required to start the game.');
-  } else {
-    startGame(io, groupId);
-  }
+  // Notify all users in the group about the new player, including the photo
+  io.to(groupId).emit('update users', groups[groupId].map(user => ({ name: user.name, photo: user.photo })));
 }
 
 function handleSubmitVote(io, socket, { groupId, votedFor }) {
@@ -53,6 +41,7 @@ function handleSubmitVote(io, socket, { groupId, votedFor }) {
     }
   }
 }
+
 
 function handleTurnRed(io, socket, { groupId, targetPlayer }) {
   const game = games[groupId];
@@ -81,6 +70,15 @@ function handleDisconnect(io, socket) {
   }
 }
 
+
+function handleStartGame(io, socket, { groupId }) {
+  if (groups[groupId] && groups[groupId].length < 2) {
+    socket.emit('error', 'At least two players are required to start the game.');
+  } else {
+    startGame(io, groupId);  // Assuming startGame is responsible for the game logic.
+  }
+}
+
 function startGame(io, groupId) {
   let players = groups[groupId];
   const redPlayer = _.sample(players);
@@ -105,40 +103,72 @@ function startGame(io, groupId) {
 
 function runGameLoop(io, groupId) {
   const game = games[groupId];
+  if (!game) {
+    console.log(`Game ${groupId} no longer exists. Stopping game loop.`);
+    return;  // Stop running the game loop if the game no longer exists
+  }
+
   game.phase = GAME_PHASES.PLAYING;
-  
+
   io.to(groupId).emit('round start', { round: game.round });
-  
+
   // If the round is even, call the GPT API to analyze the game
   if (game.round % 2 === 0) {
     analyzeGame(groupId)
       .then(analysis => {
-        io.to(groupId).emit('game analysis', { analysis });
+        if (games[groupId]) {
+          io.to(groupId).emit('game analysis', { analysis });
+        } else {
+          console.log(`Game ${groupId} was deleted before analysis could be emitted.`);
+        }
       })
       .catch(error => {
         console.error('Error getting game analysis:', error);
       });
   }
 
-  setTimeout(() => {
+  // Clear any existing timeouts for this game
+  if (gameTimeouts[groupId]) {
+    clearTimeout(gameTimeouts[groupId]);
+  }
+
+  // Set a timeout for the next game phase
+  gameTimeouts[groupId] = setTimeout(() => {
+    if (!games[groupId]) {
+      console.log(`Game ${groupId} was deleted. Stopping further execution.`);
+      clearTimeout(gameTimeouts[groupId]);  // Clear the timeout if game is deleted
+      return;
+    }
+
     game.phase = GAME_PHASES.VOTING;
     io.to(groupId).emit('voting start');
-    
-    setTimeout(() => {
+
+    // Clear any existing voting timeout
+    if (gameTimeouts[groupId]) {
+      clearTimeout(gameTimeouts[groupId]);
+    }
+
+    // Set a timeout for processing votes
+    gameTimeouts[groupId] = setTimeout(() => {
+      if (!games[groupId]) {
+        console.log(`Game ${groupId} was deleted. Stopping further execution.`);
+        clearTimeout(gameTimeouts[groupId]);  // Clear the timeout if game is deleted
+        return;
+      }
+
       processVotes(groupId);
       eliminatePlayer(io, groupId);
-      
+
       if (checkWinCondition(groupId)) {
-        endGame(io, groupId);
+        endGame(io, groupId);  // If the game ends, the game state will be cleaned up here
       } else {
         game.round++;
         resetVotes(groupId);
-        runGameLoop(io, groupId);
+        runGameLoop(io, groupId);  // Continue the game loop only if the game still exists
       }
     }, 20000);  // 20 seconds for voting
   }, 30000);  // 30 seconds for playing
 }
-
 function processVotes(groupId) {
   const game = games[groupId];
 
@@ -188,21 +218,25 @@ function checkWinCondition(groupId) {
 }
 
 async function endGame(io, groupId) {
-  const game = games[groupId];
-  const redPlayers = game.players.filter(p => p.color === 'red' && !p.eliminated);
-  const winner = redPlayers.length > 0 ? 'Red team' : 'Black team';
-  
-  io.to(groupId).emit('game over', { winner });
-  
-  // Delete the game from the Flask server
+  if (!games[groupId]) return;
+
   try {
-      await deleteGame(groupId);  // Call the delete API when the game ends
-      console.log(`Game ${groupId} deleted successfully from the server`);
+      await deleteGame(groupId);  // Call delete API when game ends
+      console.log(`Game ${groupId} deleted successfully from the server.`);
   } catch (error) {
-      console.error('Failed to delete game:', error);
+      console.error(`Failed to delete game ${groupId}:`, error);
   }
-  
-  delete games[groupId];  // Delete the game from the local game state
+
+  // Cleanup game state
+  delete games[groupId];
+
+  // Clear any game-related timeouts
+  if (gameTimeouts[groupId]) {
+      clearTimeout(gameTimeouts[groupId]);
+      delete gameTimeouts[groupId];
+  }
+
+  io.to(groupId).emit('game over', { message: 'Game ended.' });
 }
 
 function resetVotes(groupId) {

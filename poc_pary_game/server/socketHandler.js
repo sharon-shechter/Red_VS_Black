@@ -16,7 +16,7 @@ module.exports = (io) => {
       allConnectedUsers[socket.id] = data.username;
 
       // After joining the group, print the number of users connected to the group (game)
-      printConnectedUsersForGroup(data.groupId);
+      printConnectedUsersForGroup(io, data.groupId);  // Pass io here
       
       // Print the list of all users that have ever connected
       printAllConnectedUsers();
@@ -33,7 +33,7 @@ module.exports = (io) => {
       delete allConnectedUsers[socket.id]; // Remove the user from the active list
       
       // Check all groups and print updated connected users after disconnect
-      Object.keys(groups).forEach(groupId => printConnectedUsersForGroup(groupId));
+      Object.keys(groups).forEach(groupId => printConnectedUsersForGroup(io, groupId));  // Pass io here
 
       // Print the list of all users that have ever connected
       printAllConnectedUsers();
@@ -42,7 +42,7 @@ module.exports = (io) => {
 };
 
 // Function to print the number of connected users and their names for a specific groupId
-async function printConnectedUsersForGroup(groupId) {
+async function printConnectedUsersForGroup(io, groupId) {  // Accept io as a parameter
   const group = groups[groupId];
   if (!group || group.length === 0) {
     console.log(`Group_id: ${groupId} - Connected users: 0`);
@@ -51,13 +51,26 @@ async function printConnectedUsersForGroup(groupId) {
     try {
       await deleteGame(groupId);  // Use the deleteGame function from apiService
       console.log(`Game ${groupId} deleted successfully.`);
+
+      // Broadcast to all clients that the game is being deleted
+      io.to(groupId).emit('game_deleted', { message: `Game ${groupId} has been deleted.` });
+
+      // Disconnect all clients in the group (room)
+      io.in(groupId).socketsLeave(groupId);
+      
+      // Optionally, you can also disconnect all sockets in the group from the server:
+      const socketsInRoom = await io.in(groupId).fetchSockets();
+      socketsInRoom.forEach((socket) => {
+        socket.disconnect();
+      });
+
     } catch (error) {
       console.error(`Failed to delete game ${groupId}:`, error);
     }
 
     return;
   }
-  
+
   const userCount = group.length;
   const userNames = group.map(user => user.name);
   console.log(`Group_id: ${groupId} - Connected users: ${userCount}`);

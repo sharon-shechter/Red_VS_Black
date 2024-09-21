@@ -1,5 +1,5 @@
 class Player:
-    def __init__(self, name, color, vote_count=0):
+    def __init__(self, name, color, photo=None, vote_count=0):  
         """
         Initialize a new Player object.
 
@@ -9,7 +9,8 @@ class Player:
         """
         self.name = name
         self.color = color
-        self.vote_count = vote_count  # New field to track votes
+        self.photo = photo  # Store the photo
+        self.vote_count = vote_count
 
     def __repr__(self):
         """
@@ -20,23 +21,18 @@ class Player:
         return f"Player(name={self.name}, color={self.color}, vote_count={self.vote_count})"
 
     def to_dict(self):
-        """
-        Convert the Player object to a dictionary for easy serialization.
-
-        :return: A dictionary representing the player.
-        """
-        return {
-            "name": self.name,
-            "color": self.color,
-            "vote_count": self.vote_count  # Include vote count in the dictionary
-        }
+            return {
+                "name": self.name,
+                "color": self.color,
+                "photo": self.photo,  # Include the photo in the dictionary
+                "vote_count": self.vote_count
+            }
 
     @staticmethod
     def from_dict(player_dict):
-        """
-        Create a Player object from a dictionary.
-
-        :param player_dict: A dictionary containing player details.
-        :return: A Player object.
-        """
-        return Player(player_dict['name'], player_dict['color'], player_dict.get('vote_count', 0))
+        return Player(
+            player_dict['name'], 
+            player_dict['color'], 
+            player_dict.get('photo', None),  # Get the photo if present
+            player_dict.get('vote_count', 0)
+        )

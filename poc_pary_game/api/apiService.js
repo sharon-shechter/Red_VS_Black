@@ -71,6 +71,18 @@ async function analyzeGame(gameId) {
         throw error;
     }
 }
+async function convertPhotoToAsset(playerName, photoData) {
+    try {
+        const response = await axios.post(`${BASE_URL}/convert_photo_to_asset`, {
+            name: playerName,
+            photo: photoData  // Send the base64 encoded photo
+        });
+        return response.data.asset_url;  // Return the generated asset URL
+    } catch (error) {
+        console.error('Error converting photo to asset:', error.response ? error.response.data : error.message);
+        throw error;
+    }
+}
 
 module.exports = {
     createGame,
@@ -78,5 +90,6 @@ module.exports = {
     getGame,
     addPlayerToGame,
     updatePlayerVotes,
-    analyzeGame  // Export the new function
+    analyzeGame,
+    convertPhotoToAsset
 };

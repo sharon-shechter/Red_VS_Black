@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import styles from '../styles/Group.module.css';
+import styles from '../styles/TurnRedButton.module.css';
 
 export function TurnRedButton({ 
   activePlayers, 

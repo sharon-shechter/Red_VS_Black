@@ -2,35 +2,58 @@ const axios = require('axios');
 const { v4: uuidv4 } = require('uuid');
 const _ = require('lodash');
 const { GAME_PHASES, groups, games } = require('./gameState');
-const { createGame, deleteGame, getGame, addPlayerToGame, updatePlayerVotes  } = require('../api/apiService');
-const { analyzeGame } = require('../api/apiService');  // Import the new API service
 
+// Consolidate all imports from apiService into one
+const { createGame, deleteGame, getGame, addPlayerToGame, updatePlayerVotes, savePlayerPhoto, convertPhotoToAsset, analyzeGame } = require('../api/apiService');
 
 let gameTimeouts = {};  // Store timeout IDs for each game
+
 async function handleJoinGroup(io, socket, { groupId, username, photo = null }) {
-  // If the group does not exist, create it
+  console.log("handle join has started")
+  // Ensure the group exists
   if (!groups[groupId]) {
     groups[groupId] = [];
   }
 
-  // Add the player to the group, including their photo (can be null)
-  groups[groupId].push({ id: socket.id, name: username, photo });
+  // Add the player to the group immediately, even before photo processing
+  groups[groupId].push({ id: socket.id, name: username, photo: null });
 
-  // Make the API call to add the player to the game on the Flask server
   try {
-    const playerColor = 'black'; // Set default color for now
-    await addPlayerToGame(groupId, username, playerColor, photo); // Send photo to the API as well
+    const playerColor = 'black';
+    let playerAsset = null;
 
-    console.log(`Player ${username} added to game ${groupId} successfully on the server.`);
+    if (photo) {
+      // If a photo is provided, proceed with saving and converting it to a game asset
+      console.log(`Processing photo for player ${username}`);
+
+      // Save player's photo using apiService
+      await savePlayerPhoto(groupId, username, photo);
+
+      // Convert photo to game asset using apiService
+      console.log("starting assert")
+      playerAsset = await convertPhotoToAsset(groupId, username);
+      
+      // Update the player's photo in the group after photo processing is done
+      const playerInGroup = groups[groupId].find(player => player.id === socket.id);
+      if (playerInGroup) {
+        playerInGroup.photo = playerAsset;
+      }
+    }
+
+    // Add player to the game with their asset or null if no photo
+    await addPlayerToGame(groupId, username, playerColor, playerAsset);
+
+    // Notify all users in the group about the new player, including their photo if available
+    io.to(groupId).emit('update users', groups[groupId].map(user => ({ name: user.name, photo: user.photo })));
+
   } catch (error) {
-    console.error('Failed to add player to game:', error);
+    console.error('Failed to add player or generate asset:', error);
   }
 
-  // Join the group on the Socket.io server
+  // Ensure the player is part of the group in Socket.io
   socket.join(groupId);
-
-  // Notify all users in the group about the new player, including the photo
   io.to(groupId).emit('update users', groups[groupId].map(user => ({ name: user.name, photo: user.photo })));
+
 }
 
 function handleSubmitVote(io, socket, { groupId, votedFor }) {
@@ -218,13 +241,14 @@ function checkWinCondition(groupId) {
 }
 
 async function endGame(io, groupId) {
+  console.log(`Attempting to delete game ${groupId}`);
   if (!games[groupId]) return;
 
   try {
-      await deleteGame(groupId);  // Call delete API when game ends
-      console.log(`Game ${groupId} deleted successfully from the server.`);
+    await deleteGame(groupId);  // Call delete API when game ends
+    console.log(`Game ${groupId} deleted successfully from the server.`);
   } catch (error) {
-      console.error(`Failed to delete game ${groupId}:`, error);
+    console.error(`Failed to delete game ${groupId}:`, error);
   }
 
   // Cleanup game state
@@ -232,8 +256,8 @@ async function endGame(io, groupId) {
 
   // Clear any game-related timeouts
   if (gameTimeouts[groupId]) {
-      clearTimeout(gameTimeouts[groupId]);
-      delete gameTimeouts[groupId];
+    clearTimeout(gameTimeouts[groupId]);
+    delete gameTimeouts[groupId];
   }
 
   io.to(groupId).emit('game over', { message: 'Game ended.' });

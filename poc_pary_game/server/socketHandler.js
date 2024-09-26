@@ -42,33 +42,35 @@ module.exports = (io) => {
 };
 
 // Function to print the number of connected users and their names for a specific groupId
-async function printConnectedUsersForGroup(io, groupId) {  // Accept io as a parameter
+async function printConnectedUsersForGroup(io, groupId) {
   const group = groups[groupId];
+
   if (!group || group.length === 0) {
-    console.log(`Group_id: ${groupId} - Connected users: 0`);
+    // Add a delay before checking connected users to avoid race conditions
+    await new Promise(resolve => setTimeout(resolve, 1000));  // Delay for 1 second
 
-    // Call the deleteGame API since there are no more connected users
-    try {
-      await deleteGame(groupId);  // Use the deleteGame function from apiService
-      console.log(`Game ${groupId} deleted successfully.`);
+    // Recheck if the group is still empty after the delay
+    if (!groups[groupId] || groups[groupId].length === 0) {
+      console.log(`Group_id: ${groupId} - Connected users: 0`);
 
-      // Broadcast to all clients that the game is being deleted
-      io.to(groupId).emit('game_deleted', { message: `Game ${groupId} has been deleted.` });
+      // Call the deleteGame API since there are no more connected users
+      try {
+        await deleteGame(groupId);  // Use the deleteGame function from apiService
+        console.log(`Game ${groupId} deleted successfully.`);
+        io.to(groupId).emit('game_deleted', { message: `Game ${groupId} has been deleted.` });
+        io.in(groupId).socketsLeave(groupId);
 
-      // Disconnect all clients in the group (room)
-      io.in(groupId).socketsLeave(groupId);
-      
-      // Optionally, you can also disconnect all sockets in the group from the server:
-      const socketsInRoom = await io.in(groupId).fetchSockets();
-      socketsInRoom.forEach((socket) => {
-        socket.disconnect();
-      });
+        const socketsInRoom = await io.in(groupId).fetchSockets();
+        socketsInRoom.forEach((socket) => {
+          socket.disconnect();
+        });
 
-    } catch (error) {
-      console.error(`Failed to delete game ${groupId}:`, error);
+      } catch (error) {
+        console.error(`Failed to delete game ${groupId}:`, error);
+      }
+
+      return;
     }
-
-    return;
   }
 
   const userCount = group.length;

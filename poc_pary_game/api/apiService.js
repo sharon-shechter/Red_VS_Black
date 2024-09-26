@@ -2,6 +2,7 @@ const axios = require('axios');
 
 const BASE_URL = 'http://localhost:5000';  // Your Flask server URL
 
+
 // Function to create a new game
 async function createGame(gameId) {
     try {
@@ -71,25 +72,43 @@ async function analyzeGame(gameId) {
         throw error;
     }
 }
-async function convertPhotoToAsset(playerName, photoData) {
+
+// Function to save the player's photo
+async function savePlayerPhoto(gameId, playerName, playerPhoto) {
     try {
-        const response = await axios.post(`${BASE_URL}/convert_photo_to_asset`, {
-            name: playerName,
-            photo: photoData  // Send the base64 encoded photo
+        const response = await axios.post(`${BASE_URL}/save_photo`, {
+            game_id: gameId,
+            player_name: playerName,
+            photo: playerPhoto
         });
-        return response.data.asset_url;  // Return the generated asset URL
+        return response.data;
     } catch (error) {
-        console.error('Error converting photo to asset:', error.response ? error.response.data : error.message);
+        console.error('Error saving player photo:', error.response ? error.response.data : error.message);
+        throw error;
+    }
+}
+
+// Function to convert the player's photo into a game asset using DALL·E
+async function convertPhotoToAsset(gameId, playerName) {
+    try {
+        const response = await axios.post(`${BASE_URL}/convert_to_asset`, {
+            game_id: gameId,
+            player_name: playerName
+        });
+        return response.data.asset;  // Return only the asset URL
+    } catch (error) {
+        console.error('Error converting photo to game asset:', error.response ? error.response.data : error.message);
         throw error;
     }
 }
 
 module.exports = {
+    savePlayerPhoto,
+    convertPhotoToAsset,
     createGame,
     deleteGame,
-    getGame,
     addPlayerToGame,
     updatePlayerVotes,
     analyzeGame,
-    convertPhotoToAsset
+    getGame
 };

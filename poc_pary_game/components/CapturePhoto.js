@@ -1,6 +1,4 @@
 import { useState, useRef } from 'react';
-import { convertPhotoToAsset } from '../api/apiService';  // Import the new service
-
 export const CapturePhoto = ({ onPhotoTaken }) => {
   const videoRef = useRef(null);
   const [photo, setPhoto] = useState(null);
@@ -30,6 +28,9 @@ export const CapturePhoto = ({ onPhotoTaken }) => {
     setPhoto(photoData);
     onPhotoTaken(photoData);
   
+    // Send the resized photo to the server or for further processing
+    
+  };
 
   return (
     <div>
@@ -44,4 +45,3 @@ export const CapturePhoto = ({ onPhotoTaken }) => {
     </div>
   );
 };
-}

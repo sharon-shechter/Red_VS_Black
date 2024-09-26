@@ -12,7 +12,7 @@ export const useSocket = (
   setVotedFor, 
   turnRedAbilityUsed, 
   setTurnRedAbilityUsed,
-  photo  // Add the photo parameter here
+  photo  
 ) => {
   const [users, setUsers] = useState([]);
   const [error, setError] = useState('');

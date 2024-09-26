@@ -9,6 +9,17 @@ import openai
 import base64
 from PIL import Image
 from io import BytesIO
+import openai
+from transformers import BlipProcessor, BlipForConditionalGeneration
+import torch
+
+
+# Initialize the image captioning model and processor
+device = "cuda" if torch.cuda.is_available() else "cpu"
+processor = BlipProcessor.from_pretrained("Salesforce/blip-image-captioning-base")
+model = BlipForConditionalGeneration.from_pretrained("Salesforce/blip-image-captioning-base").to(device)
+
+
 
 openai.api_key = "MY API KEY"
 
@@ -149,15 +160,15 @@ def save_photo():
 
     # Create game directory if not exists
     game_dir = os.path.join(GAMES_PHOTOS_DIR, game_id)
-    if not os.path.exists(game_dir):
-        os.makedirs(game_dir)
+    os.makedirs(game_dir, exist_ok=True)
 
-    # Save photo as .jpg file
-    photo_path = os.path.join(game_dir, f'{player_name}.jpg')
+    # Save photo as .png file
+    photo_path = os.path.join(game_dir, f'{player_name}.png')
     with open(photo_path, 'wb') as f:
         f.write(photo_data)
 
     return jsonify({"message": f"Photo saved for {player_name}"}), 200
+
 
 # Convert the saved photo to game asset using DALL·E API
 @app.route('/convert_to_asset', methods=['POST'])
@@ -167,27 +178,44 @@ def convert_to_asset():
     player_name = data['player_name']
 
     # Get the photo path
-    photo_path = os.path.join(GAMES_PHOTOS_DIR, game_id, f'{player_name}.jpg')
+    photo_path = os.path.join(GAMES_PHOTOS_DIR, game_id, f'{player_name}.png')
 
-    # Prepare the prompt for DALL·E to convert the photo to game asset
-    prompt = f"Convert this player photo into a game character asset for player {player_name}"
+    # Use the BLIP model to generate a description of the photo
+    try:
+        with Image.open(photo_path) as img:
+            # Prepare the image for the BLIP model
+            img = img.convert('RGB')
+            inputs = processor(images=img, return_tensors="pt").to(device)
 
-    # Call DALL·E API
-    response = openai.Image.create(
-        model="dall-e-2",
-        prompt=prompt,
-        n=1,
-        size="512x512"
-    )
+            # Generate description
+            out = model.generate(**inputs)
+            description = processor.decode(out[0], skip_special_tokens=True)
+            print(f"Generated description: {description}")
+    except Exception as e:
+        print(f"Error generating description: {e}")
+        return jsonify({"error": "Failed to generate description."}), 500
 
-    asset_url = response['data'][0]['url']
+    # Use the description as a prompt for DALL·E 3
+    prompt = f"Create a 2D game asset based on a person who {description}."
+
+    # Call DALL·E 3 API to create an image based on the description
+    try:
+        response = openai.Image.create(
+            model="dall-e-3",
+            prompt=prompt,
+            size="1024x1024",  
+            quality="standard",  
+            n=1
+        )
+        asset_url = response['data'][0]['url']
+    except Exception as e:
+        print(f"Error generating image with DALL·E 3: {e}")
+        return jsonify({"error": "Failed to generate image with DALL·E 3."}), 500
 
     # Optionally, save the asset back to the server or game DB
     save_player_asset(game_id, player_name, asset_url)
 
     return jsonify({"asset": asset_url}), 200
-
-
 
 
 def get_game_analysis_from_gpt(game_data):

@@ -95,12 +95,19 @@ export const useSocket = (
 
   const handlePlayerElimination = (eliminatedPlayer) => {
     setError(`${eliminatedPlayer} has been eliminated!`);
-    setGameState((prevState) => ({
-      ...prevState,
-      players: prevState.players.map((player) =>
-        player.name === eliminatedPlayer ? { ...player, eliminated: true } : player
-      ),
-    }));
+    
+    setGameState((prevState) => {
+      if (!prevState || !prevState.players) {
+        return prevState;  // If there are no players or the state is invalid, return the current state
+      }
+  
+      return {
+        ...prevState,
+        players: prevState.players.map((player) =>
+          player.name === eliminatedPlayer ? { ...player, eliminated: true } : player
+        ),
+      };
+    });
   };
 
   const handleSubmit = (e) => {

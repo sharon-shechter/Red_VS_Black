@@ -53,7 +53,19 @@ async function printConnectedUsersForGroup(io, groupId) {
     if (!groups[groupId] || groups[groupId].length === 0) {
       console.log(`Group_id: ${groupId} - Connected users: 0`);
 
-      // Call the deleteGame API since there are no more connected users
+      // Check if the game is still in the database before attempting to delete
+      try {
+        const gameData = await getGame(groupId);
+        if (!gameData || gameData.message === 'Game not found') {
+          console.log(`Game ${groupId} was already deleted or not found in the database.`);
+          return;  // Exit if the game is already deleted
+        }
+      } catch (error) {
+        console.error(`Failed to check game existence for ${groupId}:`, error);
+        return;  // Exit if there's an error checking the game
+      }
+
+      // Call the deleteGame API since there are no more connected users and the game still exists
       try {
         await deleteGame(groupId);  // Use the deleteGame function from apiService
         console.log(`Game ${groupId} deleted successfully.`);
@@ -64,7 +76,6 @@ async function printConnectedUsersForGroup(io, groupId) {
         socketsInRoom.forEach((socket) => {
           socket.disconnect();
         });
-
       } catch (error) {
         console.error(`Failed to delete game ${groupId}:`, error);
       }

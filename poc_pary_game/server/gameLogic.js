@@ -237,13 +237,36 @@ function checkWinCondition(groupId) {
   const game = games[groupId];
   const redPlayers = game.players.filter(p => p.color === 'red' && !p.eliminated);
   const activePlayers = game.players.filter(p => !p.eliminated);
-  return redPlayers.length === 0 || redPlayers.length === activePlayers.length;
+
+  if (redPlayers.length === 0) {
+    // All red players are eliminated, so black wins
+    return 'black';
+  } else if (redPlayers.length === activePlayers.length) {
+    // All remaining active players are red, so red wins
+    return 'red';
+  }
+
+  // No team has won yet
+  return null;
 }
 
 async function endGame(io, groupId) {
-  console.log(`Attempting to delete game ${groupId}`);
+  console.log(`Attempting to end game ${groupId}`);
   if (!games[groupId]) return;
 
+  // Check which team won
+  const winningTeam = checkWinCondition(groupId);
+
+  // Emit the game over event with the winning team
+  if (winningTeam) {
+    io.to(groupId).emit('game over', { winner: `${winningTeam} team` });
+    console.log(`Game Over! The ${winningTeam} team wins!`);
+  } else {
+    io.to(groupId).emit('game over', { winner: 'No winner' });
+    console.log('Game Over! No winner');
+  }
+
+  // Attempt to delete the game from the server
   try {
     await deleteGame(groupId);  // Call delete API when game ends
     console.log(`Game ${groupId} deleted successfully from the server.`);
@@ -259,8 +282,6 @@ async function endGame(io, groupId) {
     clearTimeout(gameTimeouts[groupId]);
     delete gameTimeouts[groupId];
   }
-
-  io.to(groupId).emit('game over', { message: 'Game ended.' });
 }
 
 function resetVotes(groupId) {

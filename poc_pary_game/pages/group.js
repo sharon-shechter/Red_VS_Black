@@ -89,12 +89,11 @@ export default function Group() {
           <ul className={styles.userList}>
             {users.map((user, index) => (
               <li key={index} className={styles.userListItem}>
-                {user.name}
-                {user.photo && <img src={user.photo} alt={`${user.name}'s Photo`} width="50" />}
+                <span className={styles.userName}>{user.name}</span>
+                {user.photo && <img src={user.photo} alt={`${user.name}'s Photo`} />}
               </li>
             ))}
           </ul>
-
           <GameAnalysis analysis={analysis} />
         </>
       )}

@@ -49,7 +49,9 @@ export const useSocket = (
 
   const socketEvents = () => {
     socket.on('update users', (users) => setUsers(users));
-    socket.on('error', (message) => setError(message));
+    socket.on('error', (message) => {
+        setError(message); // Set the error message
+        setTimeout(() => {setError('');}, 5000); });
     socket.on('game started', (state) => handleGameStart(state));
     socket.on('round start', ({ round }) => {
       setRound(round);

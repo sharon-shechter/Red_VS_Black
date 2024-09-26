@@ -21,7 +21,7 @@ model = BlipForConditionalGeneration.from_pretrained("Salesforce/blip-image-capt
 
 
 
-openai.api_key = "MY API KEY"
+openai.api_key = "API KEY"
 
 app = Flask(__name__)
 CORS(app) 

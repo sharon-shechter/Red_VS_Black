@@ -102,6 +102,19 @@ async function convertPhotoToAsset(gameId, playerName) {
     }
 }
 
+// API call to update player's color
+async function updatePlayerColor(gameId, playerName, newColor) {
+    try {
+        const response = await axios.patch(`${BASE_URL}/update_player_color/${gameId}/${playerName}`, {
+            color: newColor
+        });
+        return response.data;
+    } catch (error) {
+        console.error('Error updating player color:', error.response ? error.response.data : error.message);
+        throw error;
+    }
+}
+
 module.exports = {
     savePlayerPhoto,
     convertPhotoToAsset,
@@ -110,5 +123,6 @@ module.exports = {
     addPlayerToGame,
     updatePlayerVotes,
     analyzeGame,
-    getGame
+    getGame,
+    updatePlayerColor  
 };

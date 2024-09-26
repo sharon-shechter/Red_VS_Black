@@ -4,7 +4,7 @@ const _ = require('lodash');
 const { GAME_PHASES, groups, games } = require('./gameState');
 
 // Consolidate all imports from apiService into one
-const { createGame, deleteGame, getGame, addPlayerToGame, updatePlayerVotes, savePlayerPhoto, convertPhotoToAsset, analyzeGame } = require('../api/apiService');
+const { createGame, deleteGame, getGame, addPlayerToGame, updatePlayerVotes, savePlayerPhoto, convertPhotoToAsset, analyzeGame, updatePlayerColor } = require('../api/apiService');
 
 let gameTimeouts = {};  // Store timeout IDs for each game
 
@@ -104,7 +104,7 @@ function handleStartGame(io, socket, { groupId }) {
 
 function startGame(io, groupId) {
   let players = groups[groupId];
-  const redPlayer = _.sample(players);
+  const redPlayer = _.sample(players);  // Randomly select the red player
 
   games[groupId] = {
     phase: GAME_PHASES.PLAYING,
@@ -120,7 +120,19 @@ function startGame(io, groupId) {
     }))
   };
 
+  // Notify players that the game has started
   io.to(groupId).emit('game started', games[groupId]);
+
+  // Send API call to update the red player's color in the game database
+  updatePlayerColor(groupId, redPlayer.name, 'red')
+    .then(response => {
+      console.log(`Updated color for player ${redPlayer.name}:`, response);
+    })
+    .catch(error => {
+      console.error(`Failed to update color for player ${redPlayer.name}:`, error);
+    });
+
+  // Start the game loop
   runGameLoop(io, groupId);
 }
 
@@ -136,8 +148,8 @@ function runGameLoop(io, groupId) {
   io.to(groupId).emit('round start', { round: game.round });
 
   // If the round is even, call the GPT API to analyze the game
-  if (game.round % 2 === 0) {
-    analyzeGame(groupId)
+  if (game.round === 2 || game.round === 4) {
+        analyzeGame(groupId)
       .then(analysis => {
         if (games[groupId]) {
           io.to(groupId).emit('game analysis', { analysis });

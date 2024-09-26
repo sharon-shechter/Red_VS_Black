@@ -132,6 +132,22 @@ def list_games():
     return jsonify(games_list), 200
 
 
+@app.route('/update_player_color/<game_id>/<player_name>', methods=['PATCH'])
+def update_player_color(game_id, player_name):
+    game = game_db.get_game(game_id)
+    if not game:
+        return jsonify({"message": "Game not found"}), 404
+
+    player = next((p for p in game.players if p.name == player_name), None)
+    if not player:
+        return jsonify({"message": "Player not found"}), 404
+
+    data = request.get_json()
+    player_color = data.get('color')
+    player.color = player_color
+
+    return jsonify({"message": f"Player {player_name} color updated to {player_color}"}), 200
+
 
 @app.route('/analyze_game/<game_id>', methods=['GET'])
 def analyze_game(game_id):
@@ -139,11 +155,24 @@ def analyze_game(game_id):
     if game is None:
         return jsonify({"message": "Game not found"}), 404
 
-    # Prepare game data for GPT analysis
+    # Prepare and filter game data for GPT analysis
     game_data = game.to_dict()
+
+    # Only keep relevant player information: name, color, and vote count (exclude photo)
+    filtered_game_data = {
+        "number_of_players": game_data['number_of_players'],
+        "players": [
+            {
+                "name": player['name'],
+                "color": player['color'],
+                "vote_count": player['vote_count']
+            }
+            for player in game_data['players']
+        ]
+    }
     
-    # Call the GPT API
-    analysis = get_game_analysis_from_gpt(game_data)
+    # Call the GPT API with filtered data
+    analysis = get_game_analysis_from_gpt(filtered_game_data)
     
     return jsonify({"analysis": analysis}), 200
 
@@ -196,7 +225,7 @@ def convert_to_asset():
         return jsonify({"error": "Failed to generate description."}), 500
 
     # Use the description as a prompt for DALL·E 3
-    prompt = f"Create a 2D game asset based on a person who {description}."
+    prompt = f"Create a 2D game asset based on a person who {description}. make one figure with wite back ground"
 
     # Call DALL·E 3 API to create an image based on the description
     try:
@@ -222,20 +251,21 @@ def get_game_analysis_from_gpt(game_data):
 
     # Prepare the message format for the chat model
     messages = [
-        {"role": "system", "content": "You are a game analyst."},
-        {"role": "user", "content": f"Analyze the current game state: {game_data}"}
+        {"role": "system", "content": "You are a crazy wizard. Your task is to give predictions about the game, sometimes truthful, sometimes misleading. Be whimsical and mysterious in your predictions, as you analyze the state of a magical battle between two teams: Red vs. Black."},
+        {"role": "user", "content": f"The game is a battle between two teams: Red team and Black team. The Red team must survive while the Black team tries to eliminate them. Each round, players vote to decide who they think is on the Red team, and the player with the most votes is eliminated. Based on this current game state: {game_data}, say shortly who seems to be red (truthful or not)"}
     ]
 
     response = openai.ChatCompletion.create(
         model="gpt-4",  
         messages=messages,
-        max_tokens=100,
+        max_tokens=150, 
         n=1,
         stop=None,
-        temperature=0.7,
+        temperature=0.9,  
     )
 
     return response['choices'][0]['message']['content'].strip()
+
 
 
 

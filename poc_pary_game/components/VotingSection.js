@@ -1,7 +1,14 @@
+import React from 'react';
+import styles from '../styles/VotingSection.module.css';
+
 export function VotingSection({ activePlayers, username, votedFor, setVotedFor, handleVote }) {
   return (
-    <div>
-      <select value={votedFor} onChange={(e) => setVotedFor(e.target.value)}>
+    <div className={styles.votingContainer}>
+      <select 
+        className={styles.selectPlayer}
+        value={votedFor} 
+        onChange={(e) => setVotedFor(e.target.value)}
+      >
         <option value="">Select a player</option>
         {activePlayers
           .filter(player => player.name !== username)
@@ -9,7 +16,13 @@ export function VotingSection({ activePlayers, username, votedFor, setVotedFor, 
             <option key={index} value={player.name}>{player.name}</option>
           ))}
       </select>
-      <button onClick={handleVote} className="button">Vote</button>
+      <button 
+        onClick={handleVote} 
+        className={styles.voteButton}
+        disabled={!votedFor}
+      >
+        Vote
+      </button>
     </div>
   );
 }

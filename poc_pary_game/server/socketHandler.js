@@ -1,7 +1,6 @@
 const { handleJoinGroup, handleStartGame, handleSubmitVote, handleTurnRed, handleDisconnect } = require('./gameLogic');
 const { groups } = require('./gameState');
-const { deleteGame } = require('../api/apiService');  // Import deleteGame from apiService
-
+const { deleteGame, getGame } = require('../api/apiService');  // Import getGame and deleteGame from apiService
 // Create an object to store all connected users, even after they disconnect
 let allConnectedUsers = {};
 
@@ -55,7 +54,7 @@ async function printConnectedUsersForGroup(io, groupId) {
 
       // Check if the game is still in the database before attempting to delete
       try {
-        const gameData = await getGame(groupId);
+        const gameData = await getGame(groupId);  // Ensure getGame is imported from apiService
         if (!gameData || gameData.message === 'Game not found') {
           console.log(`Game ${groupId} was already deleted or not found in the database.`);
           return;  // Exit if the game is already deleted
@@ -89,7 +88,6 @@ async function printConnectedUsersForGroup(io, groupId) {
   console.log(`Group_id: ${groupId} - Connected users: ${userCount}`);
   console.log(`Usernames: ${userNames.join(', ')}`);
 }
-
 // Function to print all users who have ever connected to the server
 function printAllConnectedUsers() {
   const userCount = Object.keys(allConnectedUsers).length;

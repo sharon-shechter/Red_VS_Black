@@ -6,6 +6,7 @@ export const CapturePhoto = ({ onPhotoTaken }) => {
   const [photo, setPhoto] = useState(null);
   const [gameAsset, setGameAsset] = useState(null);
   const [showCamera, setShowCamera] = useState(false);
+  
 
   const startCamera = () => {
     navigator.mediaDevices.getUserMedia({ video: true })
@@ -34,7 +35,7 @@ export const CapturePhoto = ({ onPhotoTaken }) => {
     <div className={styles.capturePhotoContainer}>
       {!showCamera ? (
         <button onClick={handleAddPlayer} className={`${styles.button} ${styles.addPlayerButton}`}>
-          Add a photo
+          Add a Player
         </button>
       ) : (
         <>

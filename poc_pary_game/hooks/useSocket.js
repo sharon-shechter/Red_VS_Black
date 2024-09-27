@@ -12,7 +12,8 @@ export const useSocket = (
   setVotedFor, 
   turnRedAbilityUsed, 
   setTurnRedAbilityUsed,
-  photo  
+  photo,
+  setIsProcessing
 ) => {
   const [users, setUsers] = useState([]);
   const [error, setError] = useState('');
@@ -114,10 +115,17 @@ export const useSocket = (
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    
     if (username && groupId) {
-      // Send the photo along with the username when joining the group
+      // Check if there's a photo
+      if (photo) {
+        setIsProcessing(true); // Start showing the loading indicator
+      }
+      
+      // Emit the 'join group' event with the username, groupId, and photo
       socket.emit('join group', { groupId, username, photo });
-      setJoined(true);
+      
+      setJoined(true); // Mark the user as joined
     }
   };
 
@@ -144,6 +152,7 @@ export const useSocket = (
   const activePlayers = gameState?.players.filter((player) => !player.eliminated) || [];
 
   return {
+    socket,
     gameState,
     users,
     error,
@@ -152,7 +161,7 @@ export const useSocket = (
     round,
     playingTimer,
     votingTimer,
-    handleSubmit,  // Now the handleSubmit sends the photo
+    handleSubmit,  
     handleStartGame,
     handleVote,
     handleTurnRed,

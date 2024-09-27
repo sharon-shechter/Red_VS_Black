@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';  
 import { useRouter } from 'next/router';
 import styles from '../styles/Group.module.css';
 import { CapturePhoto } from '../components/CapturePhoto';
@@ -15,11 +15,13 @@ export default function Group() {
   const [joined, setJoined] = useState(false);
   const [votedFor, setVotedFor] = useState('');
   const [turnRedAbilityUsed, setTurnRedAbilityUsed] = useState(false);
-
+  const [isProcessing, setIsProcessing] = useState(false);  // Add isProcessing state
+  
   const router = useRouter();
   const { groupId } = router.query;
 
   const {
+    socket,
     gameState, 
     users, 
     error, 
@@ -35,7 +37,21 @@ export default function Group() {
     myPlayer, 
     activePlayers,
     analysis
-  } = useSocket(groupId, username, setUsername, setJoined, votedFor, setVotedFor, turnRedAbilityUsed, setTurnRedAbilityUsed, photo);
+  } = useSocket(groupId, username, setUsername, setJoined, votedFor, setVotedFor, turnRedAbilityUsed, setTurnRedAbilityUsed, photo, setIsProcessing);  // Correct argument order
+
+  useEffect(() => {
+    if (!socket) return;  // Ensure socket is initialized
+
+    // Listen for the 'photo processed' event from the server
+    socket.on('photo processed', () => {
+      setIsProcessing(false);  // Stop showing the loading indicator when the photo is processed
+    });
+
+    // Clean up the event listener when the component unmounts or when socket changes
+    return () => {
+      socket.off('photo processed');
+    };
+  }, [socket]);
 
   const handlePhotoTaken = (photoData) => {
     setPhoto(photoData);
@@ -58,6 +74,12 @@ export default function Group() {
         </div>
       ) : (
         <>
+          {isProcessing && (
+            <div>
+              <p>Processing your photo...</p>
+              <img src="/loading-icon.gif" alt="Loading" />
+            </div>
+          )}
           <GameActionButtons
             phase={phase}
             handleStartGame={handleStartGame}

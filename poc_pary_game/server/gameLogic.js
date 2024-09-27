@@ -9,7 +9,8 @@ const { createGame, deleteGame, getGame, addPlayerToGame, updatePlayerVotes, sav
 let gameTimeouts = {};  // Store timeout IDs for each game
 
 async function handleJoinGroup(io, socket, { groupId, username, photo = null }) {
-  console.log("handle join has started")
+  console.log("handle join has started");
+
   // Ensure the group exists
   if (!groups[groupId]) {
     groups[groupId] = [];
@@ -19,42 +20,42 @@ async function handleJoinGroup(io, socket, { groupId, username, photo = null }) 
   groups[groupId].push({ id: socket.id, name: username, photo: null });
 
   try {
-    const playerColor = 'black';
     let playerAsset = null;
 
     if (photo) {
-      // If a photo is provided, proceed with saving and converting it to a game asset
-      console.log(`Processing photo for player ${username}`);
+      // Emit 'photo processing' to the client to show the loading spinner
+      io.to(socket.id).emit('photo processing', { message: 'Processing your photo...' });
 
-      // Save player's photo using apiService
+      // Save player's photo
       await savePlayerPhoto(groupId, username, photo);
 
-      // Convert photo to game asset using apiService
-      console.log("starting assert")
+      // Convert photo to game asset
       playerAsset = await convertPhotoToAsset(groupId, username);
-      
-      // Update the player's photo in the group after photo processing is done
+
+      // Update the player's photo in the group
       const playerInGroup = groups[groupId].find(player => player.id === socket.id);
       if (playerInGroup) {
         playerInGroup.photo = playerAsset;
       }
+
+      // Emit 'photo processed' to the client when the photo processing is done
+      io.to(socket.id).emit('photo processed', { playerAsset });
     }
 
     // Add player to the game with their asset or null if no photo
-    await addPlayerToGame(groupId, username, playerColor, playerAsset);
+    await addPlayerToGame(groupId, username, 'black', playerAsset);
 
-    // Notify all users in the group about the new player, including their photo if available
+    // Notify all users in the group about the new player
     io.to(groupId).emit('update users', groups[groupId].map(user => ({ name: user.name, photo: user.photo })));
-
   } catch (error) {
-    console.error('Failed to add player or generate asset:', error);
+    console.error('Failed to process photo or join game:', error);
   }
 
   // Ensure the player is part of the group in Socket.io
   socket.join(groupId);
   io.to(groupId).emit('update users', groups[groupId].map(user => ({ name: user.name, photo: user.photo })));
-
 }
+
 
 function handleSubmitVote(io, socket, { groupId, votedFor }) {
   if (games[groupId] && games[groupId].phase === GAME_PHASES.VOTING) {
@@ -107,6 +108,7 @@ function startGame(io, groupId) {
   const redPlayer = _.sample(players);  // Randomly select the red player
 
   games[groupId] = {
+    id: groupId,  
     phase: GAME_PHASES.PLAYING,
     round: 1,
     turnRedAbilityUsed: false,
@@ -138,7 +140,7 @@ function startGame(io, groupId) {
 
 function runGameLoop(io, groupId) {
   const game = games[groupId];
-  if (!game) {
+  if (!game.id) {
     console.log(`Game ${groupId} no longer exists. Stopping game loop.`);
     return;  // Stop running the game loop if the game no longer exists
   }

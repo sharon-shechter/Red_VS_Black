@@ -12,6 +12,8 @@ from io import BytesIO
 import openai
 from transformers import BlipProcessor, BlipForConditionalGeneration
 import torch
+from flask_socketio import SocketIO, emit
+
 
 
 # Initialize the image captioning model and processor
@@ -25,7 +27,7 @@ openai.api_key = "API KEY"
 
 app = Flask(__name__)
 CORS(app) 
-# Initialize the GameDB
+socketio = SocketIO(app, cors_allowed_origins="*")
 game_db = GameDB()
 
 
@@ -216,8 +218,8 @@ def convert_to_asset():
             img = img.convert('RGB')
             inputs = processor(images=img, return_tensors="pt").to(device)
 
-            # Generate description
-            out = model.generate(**inputs)
+            # Generate description with max_new_tokens to control the length
+            out = model.generate(**inputs, max_new_tokens=50)  # Set max_new_tokens to 50 or any desired length
             description = processor.decode(out[0], skip_special_tokens=True)
             print(f"Generated description: {description}")
     except Exception as e:
@@ -225,7 +227,7 @@ def convert_to_asset():
         return jsonify({"error": "Failed to generate description."}), 500
 
     # Use the description as a prompt for DALL·E 3
-    prompt = f"Create a 2D game asset based on a person who {description}. make one figure with wite back ground"
+    prompt = f"Create a 2D game asset based on a person who {description}. make one figure standong in the front of the frame with wite back ground."
 
     # Call DALL·E 3 API to create an image based on the description
     try:

@@ -1,4 +1,5 @@
-import { TurnRedButton } from './TurnRedButton';  // Import the TurnRedButton component
+import styles from '../styles/GameActionButtons.module.css'; 
+import { TurnRedButton } from './TurnRedButton'; 
 
 export const GameActionButtons = ({
     phase,
@@ -12,8 +13,15 @@ export const GameActionButtons = ({
     showPlayerList,
     setShowPlayerList
   }) => (
-    <>
-      {phase === 'waiting' && <button onClick={handleStartGame}>Start the Game</button>}
+    <div className={styles.container}>
+      {phase === 'waiting' && (
+        <button 
+          onClick={handleStartGame} 
+          className={`${styles.startButton} ${styles.pulsing}`}  // Add pulsing animation class
+        >
+          Start the Game
+        </button>
+      )}
   
       {myPlayer?.color === 'red' && phase === 'playing' && !turnRedAbilityUsed && (
         <TurnRedButton 
@@ -25,6 +33,5 @@ export const GameActionButtons = ({
           setShowPlayerList={setShowPlayerList} 
         />
       )}
-    </>
+    </div>
   );
-  

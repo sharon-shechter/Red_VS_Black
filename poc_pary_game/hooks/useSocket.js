@@ -13,7 +13,7 @@ export const useSocket = (
   turnRedAbilityUsed, 
   setTurnRedAbilityUsed,
   photo,
-  setIsProcessing
+  setIsProcessing // This is already passed as a parameter
 ) => {
   const [users, setUsers] = useState([]);
   const [error, setError] = useState('');
@@ -29,7 +29,17 @@ export const useSocket = (
     if (groupId) {
       socket = io('http://localhost:3001');
       socketEvents();
-      return () => socket.disconnect();
+
+      // Listen for the 'photo processed' event from the server
+      socket.on('photo processed', () => {
+        setIsProcessing(false);  // Stop showing the loading indicator when the photo is processed
+      });
+
+      // Clean up the event listener when the component unmounts or when socket changes
+      return () => {
+        socket.off('photo processed');
+        socket.disconnect();
+      };
     }
   }, [groupId]);
 

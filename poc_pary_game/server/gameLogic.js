@@ -4,7 +4,7 @@ const _ = require('lodash');
 const { GAME_PHASES, groups, games } = require('./gameState');
 
 // Consolidate all imports from apiService into one
-const { createGame, deleteGame, getGame, addPlayerToGame, updatePlayerVotes, savePlayerPhoto, convertPhotoToAsset, analyzeGame, updatePlayerColor } = require('../api/apiService');
+const { deleteGame,  addPlayerToGame, updatePlayerVotes, savePlayerPhoto, convertPhotoToAsset, analyzeGame, updatePlayerColor } = require('../api/apiService');
 
 let gameTimeouts = {};  // Store timeout IDs for each game
 

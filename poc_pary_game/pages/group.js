@@ -59,12 +59,7 @@ export default function Group() {
         </div>
       ) : (
         <>
-          {isProcessing && (
-            <div className={styles.loadingContainer}>
-              <p>Processing your photo...</p>
-              <div className={styles.spinner}></div>
-            </div>
-          )}
+          
           
           {/* Show Invite Friends button before the game starts */}
           <InviteFriendsButton phase={phase} />
@@ -93,6 +88,12 @@ export default function Group() {
               setVotedFor={setVotedFor} 
               handleVote={handleVote} 
             />
+          )}
+          {isProcessing && (
+            <div className={styles.loadingContainer}>
+              <p>Processing your photo...</p>
+              <div className={styles.spinner}></div>
+            </div>
           )}
 
           <ul className={styles.userList}>

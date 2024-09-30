@@ -107,7 +107,13 @@ export const useSocket = (
   };
 
   const handlePlayerElimination = (eliminatedPlayer) => {
-    setError(`${eliminatedPlayer} has been eliminated!`);
+    // Set the elimination message
+    setMessage(`${eliminatedPlayer} has been eliminated!`);
+  
+    // Clear the message after 5 seconds (5000 milliseconds)
+    setTimeout(() => {
+      setMessage('');
+    }, 5000);
     
     setGameState((prevState) => {
       if (!prevState || !prevState.players) {

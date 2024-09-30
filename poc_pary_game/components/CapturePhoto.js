@@ -35,7 +35,7 @@ export const CapturePhoto = ({ onPhotoTaken }) => {
     <div className={styles.capturePhotoContainer}>
       {!showCamera ? (
         <button onClick={handleAddPlayer} className={`${styles.button} ${styles.addPlayerButton}`}>
-          Add a Player
+          Add a photo
         </button>
       ) : (
         <>

@@ -23,7 +23,7 @@ model = BlipForConditionalGeneration.from_pretrained("Salesforce/blip-image-capt
 
 
 
-openai.api_key = "MY API KEY"
+openai.api_key = "API KEY"
 
 app = Flask(__name__)
 CORS(app) 
@@ -227,7 +227,7 @@ def convert_to_asset():
         return jsonify({"error": "Failed to generate description."}), 500
 
     # Use the description as a prompt for DALL·E 3
-    prompt = f"Create a 2D game asset based on a person who {description}. make one figure standong in the front of the frame with wite back ground."
+    prompt = f"Create a 2D game asset based on a person who {description}. make ONE figure portret of the with white background."
 
     # Call DALL·E 3 API to create an image based on the description
     try:
@@ -253,8 +253,8 @@ def get_game_analysis_from_gpt(game_data):
 
     # Prepare the message format for the chat model
     messages = [
-        {"role": "system", "content": "You are a crazy wizard. Your task is to give predictions about the game, sometimes truthful, sometimes misleading. Be whimsical and mysterious in your predictions, as you analyze the state of a magical battle between two teams: Red vs. Black."},
-        {"role": "user", "content": f"The game is a battle between two teams: Red team and Black team. The Red team must survive while the Black team tries to eliminate them. Each round, players vote to decide who they think is on the Red team, and the player with the most votes is eliminated. Based on this current game state: {game_data}, say shortly who seems to be red (truthful or not)"}
+        {"role": "system", "content": "You are a wizard. Your task is to give predictions about the game, sometimes truthful, sometimes misleading. Be mysterious in your predictions, as you analyze the state of a game between two teams: Red vs. Black."},
+        {"role": "user", "content": f"The game is a battle between two teams: Red team and Black team. The Red team must survive while the Black team tries to eliminate them. Each round, players vote to decide who they think is on the Red team, and the player with the most votes is eliminated. Based on this current game state: {game_data}, say shortly (2 lines) who seems to be red (truthful or not)"}
     ]
 
     response = openai.ChatCompletion.create(
